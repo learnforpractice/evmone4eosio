@@ -24,7 +24,7 @@ before_build:
     if (!(test-path build)) { mkdir build }
     cd build
     cmake --version
-    cmake -DEVMONE_TESTING=ON -Wno-dev -G "$env:GENERATOR" .. -DCMAKE_INSTALL_PREFIX=C:\install
+    cmake -DCMAKE_C_COMPILER_WORKS=TRUE -DCMAKE_CXX_COMPILER_WORKS=TRUE -DEVMONE_TESTING=ON -Wno-dev -G "$env:GENERATOR" .. -DCMAKE_INSTALL_PREFIX=C:\install
 
 build_script:
 - ps: |
