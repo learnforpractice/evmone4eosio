@@ -112,7 +112,3 @@ workflows:
   evmone:
     jobs:
       - lint
-      - gcc-min
-      - gcc-latest-coverage
-      - clang-latest-ubsan
-      - macos-asan
