@@ -10,83 +10,56 @@ int64_t cisqrt(int128 x) noexcept
     return static_cast<int64_t>(ceil(sqrt((double)x)));
 }
 
-int128 newton(int128 n) noexcept
+int clz(unsigned __int128 x)
 {
-    if (n == 0)
-        return 0;
+    auto hi = uint64_t(x >> 64);
+    auto lo = uint64_t(x);
+    return hi != 0 ? __builtin_clzll(hi) : lo != 0 ? __builtin_clzll(lo) + 64 : 128;
+}
 
-    int128 y = 0;
-    int128 x = 2;
-    while (y != x && y != x + 1)
+ int128 isqrt(int128 n) noexcept
+{
+    // The number of 2-bit digits.
+    auto s = (128 - clz(n) + 1) & ~1;
+
+    int128 r = 0;
+    while ((s -= 2) >= 0)
     {
-        y = x;
-        x = (x + n / x) / 2;
+        r <<= 1;
+        r += ((r + 1) * (r + 1) <= (n >> s));
     }
 
-    if (x * x != n)
-        x += 1;
+    return r;
+}
 
-    return x;
+ int128 isqrt_ceil(int128 n) noexcept
+{
+         auto r = isqrt(n);
+    r += (r * r != n);
+    return r;
 }
 
 int128 integerSqrt(int128 n) noexcept
 {
     // Find greatest shift.
-    int shift = 2;
-    auto nShifted = n >> shift;
-    while (nShifted != 0)
-    {
-        shift += 2;
-        nShifted = n >> shift;
-    }
-    shift -= 2;
+    auto s = (128 - clz(n) + 1) & ~1;
+
+    //    std::cerr << (int64_t)n << " " << z << " " << shift << "\n";
 
     // Find digits of result.
-    int128 result = 0;
-    while (shift >= 0)
+    int128 r = 0;
+    while ((s -= 2) >= 0)
     {
-        result <<= 1;
-        auto candidateResult = result + 1;
-        if (candidateResult * candidateResult <= (n >> shift))
-            result = candidateResult;
-        shift -= 2;
+        r <<= 1;
+        r += ((r + 1) * (r + 1) <= (n >> s));
     }
 
     // The result contains the floor(sqrt(n)).
 
-    if (result * result != n)
-        result += 1;
+    if (r * r != n)
+        r += 1;
 
-    return result;
-}
-
-
-int128 isqrt(int128 x) noexcept
-{
-    int128 op, res, one;
-
-    op = x;
-    res = 0;
-
-    /* "one" starts at the highest power of four <= than the argument. */
-    one = int128{1} << (128 - 2);  /* second-to-top bit set */
-    while (one > op) one >>= 2;
-
-    while (one != 0) {
-        if (op >= res + one) {
-            op -= res + one;
-            res += one << 1;  // <-- faster than 2 * one
-        }
-        res >>= 1;
-        one >>= 2;
-    }
-
-    //return res;
-
-    if (res*res != x)
-        res +=1;
-
-    return res;
+    return r;
 }
 
 
@@ -97,7 +70,13 @@ int128 memory_cost(int64_t w) noexcept
 
 int64_t max_num_words(int128 g) noexcept
 {
-    return -768 + cisqrt(256 * (2 * g + 2 * 1152));
+    return -768 + isqrt_ceil(256 * (2 * g + 2 * 1152));
+}
+
+int64_t max_memory_per_gas_bit(int c) noexcept
+{
+    auto m = (uint64_t{1} << c)- 1;
+    return max_num_words(m) * 32;
 }
 
 
@@ -121,7 +100,7 @@ int test_max_words()
             return 2;
         }
 
-        if (w % 1000000000 == 0)
+        if (w % 100000000 == 0)
         {
             std::cout << (int64_t)g << " " << w << " " << m << "\n";
         }
@@ -138,11 +117,12 @@ int test_max_words()
 
 int test_isqrt()
 {
-    for (int128 i = 0; i < 100000000; ++i)
+    int128 start = int128{1} << 50;
+    for (int128 i = start; i < start + 1000000000; ++i)
     {
         auto a = cisqrt(i);
-        auto b = integerSqrt(i);
-//        auto b = isqrt(i);
+        auto b = isqrt_ceil(i);
+        //        auto b = isqrt(i);
         if (a != b)
         {
             std::cout << (int64_t)i << " " << (int64_t)a << " " << (int64_t)b << "\n";
@@ -157,8 +137,18 @@ int test_isqrt()
     return 0;
 }
 
+int print_table()
+{
+    for (int i = 0; i <= 64; ++i)
+    {
+        std::cout << i << ": " << max_memory_per_gas_bit(i) << "\n";
+    }
+    return 0;
+}
+
 int main()
 {
-    return test_isqrt();
-    //    return test_max_words();
+    print_table();
+//    return test_isqrt();
+//        return test_max_words();
 }
