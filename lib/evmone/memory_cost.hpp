@@ -5,6 +5,7 @@
 
 #include <intx/int128.hpp>
 #include <array>
+#include <memory>
 
 namespace evmone
 {
@@ -81,5 +82,16 @@ constexpr auto max_memory_size_for_gas(int64_t gas) noexcept
 {
     return max_memory_table[64 - clz(gas)];
 }
+
+
+struct evm_memory
+{
+    int size = 0;
+    std::unique_ptr<uint8_t[]> memory;
+
+    explicit evm_memory(int64_t gas_limit) noexcept
+      : memory{new uint8_t[max_memory_size_for_gas(gas_limit)]}
+    {}
+};
 
 }  // namespace evmone
