@@ -11,6 +11,7 @@ add_executable(evmone-unittests
     evmone_test.cpp
     execution_calls_test.cpp
     execution_test.cpp
+    memory_cost_test.cpp
     utils_test.cpp
 )
 
