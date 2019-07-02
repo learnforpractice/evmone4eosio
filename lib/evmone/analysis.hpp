@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <deque>
 #include <vector>
+#include "memory_cost.hpp"
 
 namespace evmone
 {
@@ -76,7 +77,7 @@ struct execution_state
 
     evm_stack stack;
 
-    std::vector<uint8_t> memory;  // TODO: Use bytes.
+    evm_memory memory;
     int64_t memory_cost = 0;
     size_t output_offset = 0;
     size_t output_size = 0;
@@ -96,6 +97,8 @@ struct execution_state
     evmc::HostContext host{nullptr};
 
     evmc_revision rev = {};
+
+    explicit execution_state(int64_t gas_limit) noexcept : memory{gas_limit} {}
 
     /// Terminates the execution with the given status code.
     void exit(evmc_status_code status_code) noexcept

@@ -20,7 +20,7 @@ evmc_result execute(evmc_instance*, evmc_context* ctx, evmc_revision rev, const 
 {
     auto analysis = analyze(op_table[rev], rev, code, code_size);
 
-    auto state = std::make_unique<execution_state>();
+    auto state = std::make_unique<execution_state>(msg->gas);
     state->analysis = &analysis;
     state->msg = msg;
     state->code = code;

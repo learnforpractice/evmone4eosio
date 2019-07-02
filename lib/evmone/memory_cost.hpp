@@ -92,6 +92,8 @@ struct evm_memory
     explicit evm_memory(int64_t gas_limit) noexcept
       : memory{new uint8_t[max_memory_size_for_gas(gas_limit)]}
     {}
+
+    uint8_t& operator[](size_t index) noexcept { return memory[index]; }
 };
 
 }  // namespace evmone

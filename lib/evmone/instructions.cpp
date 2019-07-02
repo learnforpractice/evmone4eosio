@@ -40,7 +40,7 @@ bool check_memory(execution_state& state, const uint256& offset, const uint256& 
     const auto o = static_cast<int64_t>(offset);
     const auto s = static_cast<int64_t>(size);
 
-    const auto m = static_cast<int64_t>(state.memory.size());
+    const auto m = static_cast<int64_t>(state.memory.size);
 
     const auto new_size = o + s;
     if (m < new_size)
@@ -58,7 +58,11 @@ bool check_memory(execution_state& state, const uint256& offset, const uint256& 
             return false;
         }
 
-        state.memory.resize(static_cast<size_t>(w * word_size));
+        // FIXME: Add more unit tests covering this.
+        auto extension = w * word_size - state.memory.size;
+        auto new_memory_beg = &state.memory[state.memory.size];
+        state.memory.size = w * word_size;
+        std::memset(new_memory_beg, 0, extension);
     }
 
     return true;
@@ -517,7 +521,7 @@ void op_pc(execution_state& state, instr_argument arg) noexcept
 
 void op_msize(execution_state& state, instr_argument) noexcept
 {
-    state.stack.push(state.memory.size());
+    state.stack.push(state.memory.size);
 }
 
 void op_gas(execution_state& state, instr_argument arg) noexcept
