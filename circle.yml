@@ -142,7 +142,18 @@ jobs:
       CMAKE_OPTIONS: -DCOVERAGE=ON
       TESTS_FILTER: unittests
     steps:
+      - run:
+          name: "Install coveralls"
+          command: |
+            pip --version
+            pip install --user cpp-coveralls
+            coveralls -h
       - build_and_test
+      - run:
+          name: "Upload coverage data"
+          command: |
+            coveralls --gcov "$GCOV" --build-root ~/build --root ~/project
+
       - run:
           name: "Upload coverage data"
           command: |
@@ -178,27 +189,27 @@ workflows:
   version: 2
   evmone:
     jobs:
-      - lint
-      - release-linux:
-          filters:
-            tags:
-              only: /.*/
-      - release-macos:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /.*/
-      - deploy:
-          requires:
-            - release-linux
-            - release-macos
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v[0-9].*/
-      - gcc-min
+#      - lint
+#      - release-linux:
+#          filters:
+#            tags:
+#              only: /.*/
+#      - release-macos:
+#          filters:
+#            branches:
+#              ignore: /.*/
+#            tags:
+#              only: /.*/
+#      - deploy:
+#          requires:
+#            - release-linux
+#            - release-macos
+#          filters:
+#            branches:
+#              ignore: /.*/
+#            tags:
+#              only: /^v[0-9].*/
+#      - gcc-min
       - gcc-latest-coverage
-      - clang-latest-ubsan
-      - macos-asan
+#      - clang-latest-ubsan
+#      - macos-asan
