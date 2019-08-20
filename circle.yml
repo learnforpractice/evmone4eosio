@@ -149,10 +149,12 @@ jobs:
             sudo pip3 install cpp-coveralls
       - build_and_test
       - run:
-          name: "Upload coverage data"
+          name: "Upload coverage data to Coveralls"
           command: |
-            coveralls -h
-            coveralls --gcov "$GCOV" --build-root ~/build --root ~/project
+            ls -l
+            coveralls --root ~/project --build-root ~/build --gcov "$GCOV" --gcov-options '\-lp' --verbose
+            ls -l
+            ls -l ~/build
 
       - run:
           name: "Upload coverage data"
