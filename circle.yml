@@ -145,9 +145,10 @@ jobs:
       - run:
           name: "Install coveralls"
           command: |
-            pip --version
-            pip list
-            sudo pip install cpp-coveralls
+            pip3 --version
+            pip3 list
+            sudo pip3 install setuptools wheel
+            sudo pip3 install cpp-coveralls
             coveralls -h
       - build_and_test
       - run:
