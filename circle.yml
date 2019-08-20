@@ -146,7 +146,7 @@ jobs:
           name: "Install coveralls"
           command: |
             pip --version
-            pip --list
+            pip list
             sudo pip install cpp-coveralls
             coveralls -h
       - build_and_test
