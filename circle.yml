@@ -145,15 +145,13 @@ jobs:
       - run:
           name: "Install coveralls"
           command: |
-            pip3 --version
-            pip3 list
-            sudo pip3 install setuptools wheel
+            sudo pip3 install wheel
             sudo pip3 install cpp-coveralls
-            coveralls -h
       - build_and_test
       - run:
           name: "Upload coverage data"
           command: |
+            coveralls -h
             coveralls --gcov "$GCOV" --build-root ~/build --root ~/project
 
       - run:
