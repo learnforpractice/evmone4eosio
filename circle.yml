@@ -152,7 +152,7 @@ jobs:
           name: "Upload coverage data to Coveralls"
           command: |
             ls -l
-            coveralls --root ~/project --build-root ~/build --gcov "$GCOV" --gcov-options '\-lp' --verbose
+            coveralls --root ~/build --gcov-options '\-lp'
             ls -l
             ls -l ~/build
 
