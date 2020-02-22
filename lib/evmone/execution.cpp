@@ -431,19 +431,55 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     auto res = evm.execute(host, EVMC_ISTANBUL, msg, data.data(), data.size());
     eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
 
-    std::vector<rlp::ByteString> output;
-    rlp::ByteString a(new_address.bytes, new_address.bytes + 20);
-    output.emplace_back(a);
-    
-    a = rlp::ByteString(res.output_data, res.output_data + res.output_size);
-    output.emplace_back(a);
-
-    auto out = rlp::encode(output);
-    printhex(out.data(), out.size());
     if (msg.kind == EVMC_CREATE) {
         vector<uint8_t> code(res.output_data, res.output_data + res.output_size);
         eth_account_set_code(*(eth_address*)&new_address, code);
     }
+
+#if 0
+
+    rlp::ByteString bs;
+    rlp::ByteString output;
+    uint32_t total_size = 0;
+
+    bs = rlp::ByteString(new_address.bytes, new_address.bytes + 20);
+    bs = rlp::encode_details::encode_single(bs);
+    total_size += bs.size();
+    output.insert(output.end(), bs.begin(), bs.end());
+    
+    bs = rlp::ByteString(res.output_data, res.output_data + res.output_size);
+    bs = rlp::encode_details::encode_single(bs);
+    total_size += bs.size();
+    output.insert(output.end(), bs.begin(), bs.end());
+
+    rlp::encode_details::prefix_multiple_length(total_size, output);
+
+    printhex(output.data(), output.size());
+#endif
+{
+    vector<rlp::ByteString> v;
+    rlp::ByteString bs, output;
+
+    bs = rlp::ByteString(new_address.bytes, new_address.bytes + 20);
+    v.emplace_back(bs);
+    
+    bs = rlp::ByteString(res.output_data, res.output_data + res.output_size);
+    v.emplace_back(bs);
+
+    output = rlp::encode(v);
+
+    rlp::encode_details::prefix_multiple_length(output.size(), output);
+
+    printhex(output.data(), output.size());
+}
+
+#if 0
+    auto a = rlp::ByteString(new_address.bytes, new_address.bytes + 20);
+    auto b = rlp::ByteString(res.output_data, res.output_data + res.output_size);
+    auto out = rlp::encode(a, b);
+    printhex(out.data(), out.size());
+#endif
+
     // prints("\n");
     // printhex(res.output_data, res.output_size);
     // prints("\n");
