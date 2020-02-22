@@ -272,18 +272,6 @@ enum evmc_call_kind
     EVMC_CREATE2 = 4       /**< Request CREATE2. Valid since Constantinople.*/
 };
 
-struct evmc_message
-{
-    enum evmc_call_kind kind;
-    uint32_t flags;
-    int32_t depth;
-    int64_t gas;
-    evmc_address destination;
-    evmc_address sender;
-    const uint8_t* input_data;
-    size_t input_size;
-    evmc_uint256be value;
-    evmc_bytes32 create2_salt;
 #endif
 
 static secp256k1_context *s_ctx = nullptr;
@@ -352,58 +340,118 @@ extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _
     return 1;
 }
 
+#if 0
+struct evmc_message
+{
+    enum evmc_call_kind kind;
+    uint32_t flags;
+    int32_t depth;
+    int64_t gas;
+    evmc_address destination;
+    evmc_address sender;
+    const uint8_t* input_data;
+    size_t input_size;
+    evmc_uint256be value;
+    evmc_bytes32 create2_salt;
+#endif
 
 extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
+    EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
+
     auto result = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, uint256_t, rlp::ByteString, uint8_t, uint256_t, uint256_t>(raw_trx, raw_trx_size);
-    std::cout << (uint64_t)std::get<0>(result) << std::endl; //nonce
-    std::cout << (uint64_t)std::get<1>(result) << std::endl; //gas_price
-    std::cout << (uint64_t)std::get<2>(result) << std::endl; //gas_limit
+    // std::cout << (uint64_t)std::get<0>(result) << std::endl; //nonce
+    // std::cout << (uint64_t)std::get<1>(result) << std::endl; //gas_price
+    // std::cout << (uint64_t)std::get<2>(result) << std::endl; //gas_limit
+
+    evmc_address new_address;
+
+    auto msg = evmc_message{};
+    msg.gas = gas_limit;
 
 //        std::cout << (uint64_t)std::get<3>(result) << std::endl; //to
-    evmc_call_kind call_kind;
     
-    evmc_address receive_address;
-    (void)receive_address;
-    auto address = std::get<3>(result);
-    if (address.size() == 0) {
-        call_kind = EVMC_CREATE;
-    } else {
-        call_kind = EVMC_CALL;
-    }
-    (void)sender_address;(void)sender_address_size;
+    auto value = std::get<4>(result); //value
+    memcpy(msg.value.bytes, intx::as_bytes(value), 32);
 
-    std::cout << (uint64_t)std::get<4>(result) << std::endl; //value
     // std::cout << (uint64_t)std::get<5>(result) << std::endl; // data
     uint8_t v = std::get<6>(result); //v
     auto r = std::get<7>(result); //r
     auto s = std::get<8>(result); //s
 
-    uint8_t sig[65];
-    memcpy(sig, intx::as_bytes(r), 32);
-    memcpy(sig+32, intx::as_bytes(s), 32);
+    if (r == 0 && s == 0) {
+        memcpy(msg.sender.bytes, sender_address, 20);
+    } else {
+        uint8_t sig[65];
+        memcpy(sig, intx::as_bytes(r), 32);
+        memcpy(sig+32, intx::as_bytes(s), 32);
+        sig[64] = v;
+        uint8_t empty_data[32];
+        memset(empty_data, 0, 32);
+        auto hash256 = ethash::keccak256(empty_data, 32);
+        uint8_t hash[32];
+        evm_recover_key(sig, 65, (uint8_t *)&hash256, 32, hash, 32);
+        hash256 = ethash::keccak256(hash, 32);
+        printhex(&hash256, 32);
+        memcpy(msg.sender.bytes, (char*)&hash256 + 12, 20);
+    }
 
-    sig[64] = v;
+    uint32_t nonce = 0;
+    bool ret = eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
+    EOSIO_ASSERT(ret, "get_nonce: bad nonce");
 
-    uint8_t empty_data[32];
-    memset(empty_data, 0, 32);
-    auto hash256 = ethash::keccak256(empty_data, 32);
+    auto address = std::get<3>(result);
+    if (address.size() == 0) {
+        msg.kind = EVMC_CREATE;
+        rlp::ByteString s;
+        s.resize(20);
+        memcpy(s.data(), msg.sender.bytes, 20);
+        auto res = rlp::encode(s, nonce);
+        auto hash = ethash::keccak256(res.data(), res.size());
+        memcpy(new_address.bytes, (char*)&hash+12, 20);
 
-    uint8_t hash[32];
-    evm_recover_key(sig, 65, (uint8_t *)&hash256, 32, hash, 32);
-
-    hash256 = ethash::keccak256(hash, 32);
-
-    printhex(&hash256, 32);
-
+        uint64_t creator = eth_account_find_creator_by_address(*(eth_address *)&msg.sender);
+        eth_account_create(*(eth_address *)&new_address, creator);
+    } else {
+        EOSIO_ASSERT(address.size() == 20, "bad destination address");
+        msg.kind = EVMC_CALL;
+        memcpy(msg.destination.bytes, address.data(), 20);
+    }
 
     auto data = std::get<5>(result);
-    auto msg = evmc_message{};
-    msg.kind = call_kind;
-    msg.gas = gas_limit;
     msg.input_data = data.data();
     msg.input_size = data.size();
 
     auto host = MyHost();
     auto evm = evmc::VM{evmc_create_evmone()};
     auto res = evm.execute(host, EVMC_ISTANBUL, msg, data.data(), data.size());
+    eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
+
+    std::vector<rlp::ByteString> output;
+    rlp::ByteString a(new_address.bytes, new_address.bytes + 20);
+    output.emplace_back(a);
+    
+    a = rlp::ByteString(res.output_data, res.output_data + res.output_size);
+    output.emplace_back(a);
+
+    auto out = rlp::encode(output);
+    printhex(out.data(), out.size());
+    // prints("\n");
+    // printhex(res.output_data, res.output_size);
+    // prints("\n");
+    // printhex(res.create_address.bytes, 20);
+    // prints("\n");
+    // printhex(new_address.bytes, 20);
 }
+
+
+/*
+struct evmc_result
+{
+    enum evmc_status_code status_code;
+    int64_t gas_left;
+    const uint8_t* output_data;
+    size_t output_size;
+    evmc_release_result_fn release;
+    evmc_address create_address;
+};
+*/
