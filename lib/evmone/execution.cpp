@@ -70,7 +70,7 @@ using namespace std::string_literals;
 using namespace std;
 using namespace evmc;
 
-uint256be to_big_endian(uint64_t balance) {
+uint256be to_big_endian(int64_t balance) {
     uint256be _balance;
 
     for (int i=0;i<8;i++) {
@@ -141,7 +141,7 @@ public:
     virtual uint256be get_balance(const address& addr) const override {
         eth_address _addr;
         memcpy(_addr.data(), addr.bytes, 20);
-        uint64_t balance = eth_account_get_balance(_addr);
+        int64_t balance = eth_account_get_balance(_addr);
         return to_big_endian(balance);
     }
 
@@ -160,15 +160,15 @@ public:
         vector<uint8_t> code;
         eth_account_get_code(_addr, code);
 
-        bytes32 hash;
+        ethash::hash256 hash;
         memset(hash.bytes, 0, 32);
 
         if (code.size() == 0) {
-            return hash;
+            hash = ethash::keccak256((uint8_t*)"", 0);
+        } else {
+            hash = ethash::keccak256((const uint8_t*)code.data(), code.size());
         }
-
-        sha256((const char *)code.data(), code.size(), (struct checksum256*)hash.bytes);
-        return hash;
+        return *((bytes32*)&hash);
     }
 
     /// @copydoc evmc_host_interface::copy_code
@@ -312,13 +312,12 @@ extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _
     // prints("\n");
 
     int v = _signature[64];
-    if (v > 3)
-        return 0;
+    EOSIO_ASSERT(v > 3, "bad signature");
 
-    auto* ctx = s_ctx;
     secp256k1_ecdsa_recoverable_signature recoverable_signature;
-    if (!secp256k1_ecdsa_recoverable_signature_parse_compact(s_ctx, &recoverable_signature, _signature, v))
+    if (!secp256k1_ecdsa_recoverable_signature_parse_compact(s_ctx, &recoverable_signature, _signature, v)) {
         return 0;
+    }
 
     secp256k1_pubkey raw_pub_key;
     if (!secp256k1_ecdsa_recover(s_ctx, &raw_pub_key, &recoverable_signature, _message)) {
@@ -326,10 +325,7 @@ extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _
     }
 
     size_t serialized_pubkey_size = _serialized_public_key_size;
-    secp256k1_ec_pubkey_serialize(
-            s_ctx, _serialized_public_key, &serialized_pubkey_size,
-            &raw_pub_key, SECP256K1_EC_UNCOMPRESSED
-    );
+    secp256k1_ec_pubkey_serialize(s_ctx, _serialized_public_key, &serialized_pubkey_size, &raw_pub_key, SECP256K1_EC_UNCOMPRESSED);
 
     // printhex(_serialized_public_key, 65);
     // prints("\n");
@@ -435,6 +431,10 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
 
     auto out = rlp::encode(output);
     printhex(out.data(), out.size());
+    if (msg.kind == EVMC_CREATE) {
+        vector<uint8_t> code(res.output_data, res.output_data + res.output_size);
+        eth_account_set_code(*(eth_address*)&new_address, code);
+    }
     // prints("\n");
     // printhex(res.output_data, res.output_size);
     // prints("\n");
