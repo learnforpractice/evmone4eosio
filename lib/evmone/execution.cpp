@@ -213,7 +213,16 @@ public:
     virtual result call(const evmc_message& msg) override {
         (void)msg;
         evmc_result res;
-        return result(res);
+        vector<uint8_t> code;
+        eth_account_get_code(*(eth_address*)&msg.sender, code);
+        //TODO: call precompiled code
+        if (code.size()) {
+            auto host = MyHost();
+            auto evm = evmc::VM{evmc_create_evmone()};
+            return evm.execute(host, EVMC_ISTANBUL, msg, code.data(), code.size());
+        } else {
+            return result(res);
+        }
     }
 
     /// @copydoc evmc_host_interface::get_tx_context
