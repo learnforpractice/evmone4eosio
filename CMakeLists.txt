@@ -8,7 +8,7 @@ if(NOT EXISTS ${CMAKE_SOURCE_DIR}/evmc/.git)
     message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
 endif()
 
-option(BUILD_SHARED_LIBS "Build evmone as a shared library" ON)
+option(BUILD_SHARED_LIBS "Build evmone as a shared library" OFF)
 option(EVMONE_TESTING "Build tests and test tools" OFF)
 option(EVMONE_FUZZING "Instrument libraries and build fuzzing tools" OFF)
 
@@ -25,7 +25,7 @@ cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release Debug)
 
 include(Hunter/init)
 
-project(evmone LANGUAGES CXX)
+project(evmone LANGUAGES CXX C)
 set(PROJECT_VERSION 0.4.0)
 
 string(REGEX MATCH "([0-9]+)\\.([0-9]+)" _ ${PROJECT_VERSION})

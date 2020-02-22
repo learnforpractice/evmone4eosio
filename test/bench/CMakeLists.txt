@@ -9,7 +9,7 @@ find_package(benchmark CONFIG REQUIRED)
 
 add_executable(evmone-bench bench.cpp)
 
-target_include_directories(evmone-bench PRIVATE ${evmone_private_include_dir})
+target_include_directories(evmone-bench PRIVATE ${evmone_private_include_dir} ${CMAKE_SOURCE_DIR}/../eEVM/3rdparty)
 target_link_libraries(evmone-bench PRIVATE evmone testutils evmc::loader benchmark::benchmark)
 
 set(HAVE_STD_FILESYSTEM 0)
