@@ -485,7 +485,7 @@ const instruction* op_mstore8(const instruction* instr, execution_state& state) 
     return ++instr;
 }
 
-const instruction* op_sload(const instruction* instr, execution_state& state) noexcept
+const instruction* op_sload(const instruction* instr, execution_state& state)
 {
     auto& x = state.stack.top();
     x = intx::be::load<uint256>(
@@ -493,7 +493,7 @@ const instruction* op_sload(const instruction* instr, execution_state& state) no
     return ++instr;
 }
 
-const instruction* op_sstore(const instruction* instr, execution_state& state) noexcept
+const instruction* op_sstore(const instruction* instr, execution_state& state)
 {
     // TODO: Implement static mode violation in analysis.
     if (state.msg->flags & EVMC_STATIC)

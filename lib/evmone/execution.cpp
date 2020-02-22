@@ -26,7 +26,7 @@
 namespace evmone
 {
 evmc_result execute(evmc_vm* /*unused*/, const evmc_host_interface* host, evmc_host_context* ctx,
-    evmc_revision rev, const evmc_message* msg, const uint8_t* code, size_t code_size) noexcept
+    evmc_revision rev, const evmc_message* msg, const uint8_t* code, size_t code_size)
 {
     auto analysis = analyze(rev, code, code_size);
 
@@ -94,14 +94,14 @@ public:
         tx_context.block_timestamp = current_time()/1000000;
     }
     
-    virtual bool account_exists(const address& addr) const noexcept override {
+    virtual bool account_exists(const address& addr) const override {
         eth_address _addr;
         memcpy(_addr.data(), addr.bytes, 20);
         return eth_account_exists(_addr);
     }
 
     /// @copydoc evmc_host_interface::get_storage
-    virtual bytes32 get_storage(const address& addr, const bytes32& key) const noexcept override {
+    virtual bytes32 get_storage(const address& addr, const bytes32& key) const override {
         eth_address _addr;
         key256 _key;
         value256 _value;
@@ -118,7 +118,7 @@ public:
     /// @copydoc evmc_host_interface::set_storage
     virtual evmc_storage_status set_storage(const address& addr,
                                             const bytes32& key,
-                                            const bytes32& value) noexcept override {
+                                            const bytes32& value) override {
         eth_address _addr;
         key256 _key;
         value256 _value;
@@ -138,7 +138,7 @@ public:
     }
 
     /// @copydoc evmc_host_interface::get_balance
-    virtual uint256be get_balance(const address& addr) const noexcept override {
+    virtual uint256be get_balance(const address& addr) const override {
         eth_address _addr;
         memcpy(_addr.data(), addr.bytes, 20);
         uint64_t balance = eth_account_get_balance(_addr);
@@ -146,14 +146,14 @@ public:
     }
 
     /// @copydoc evmc_host_interface::get_code_size
-    virtual size_t get_code_size(const address& addr) const noexcept override {
+    virtual size_t get_code_size(const address& addr) const override {
         eth_address _addr;
         memcpy(_addr.data(), addr.bytes, 20);
         return eth_account_get_code_size(_addr);
     }
 
     /// @copydoc evmc_host_interface::get_code_hash
-    virtual bytes32 get_code_hash(const address& addr) const noexcept override {
+    virtual bytes32 get_code_hash(const address& addr) const override {
         eth_address _addr;
         memcpy(_addr.data(), addr.bytes, 20);
 
@@ -175,7 +175,7 @@ public:
     virtual size_t copy_code(const address& addr,
                              size_t code_offset,
                              uint8_t* buffer_data,
-                             size_t buffer_size) const noexcept override {
+                             size_t buffer_size) const override {
         (void)addr;
         (void)code_offset;
         (void)buffer_data;
@@ -184,7 +184,7 @@ public:
     }
 
     /// @copydoc evmc_host_interface::selfdestruct
-    virtual void selfdestruct(const address& addr, const address& beneficiary) noexcept override {
+    virtual void selfdestruct(const address& addr, const address& beneficiary) override {
         eth_address _addr;
         memcpy(_addr.data(), addr.bytes, 20);
 
@@ -210,14 +210,14 @@ public:
     uint8_t padding[4];
 #endif
     /// @copydoc evmc_host_interface::call
-    virtual result call(const evmc_message& msg) noexcept override {
+    virtual result call(const evmc_message& msg) override {
         (void)msg;
         evmc_result res;
         return result(res);
     }
 
     /// @copydoc evmc_host_interface::get_tx_context
-    virtual evmc_tx_context get_tx_context() const noexcept override {
+    virtual evmc_tx_context get_tx_context() const override {
         // memset((void *)&tx_context, 0, sizeof(tx_context));
         // tx_context.block_number = tapos_block_num();
         // tx_context.block_timestamp = current_time()/1000000;
@@ -240,7 +240,7 @@ public:
     }
 
     /// @copydoc evmc_host_interface::get_block_hash
-    virtual bytes32 get_block_hash(int64_t block_number) const noexcept override {
+    virtual bytes32 get_block_hash(int64_t block_number) const override {
         (void)block_number;
         return bytes32();
     }
@@ -250,7 +250,7 @@ public:
                           const uint8_t* data,
                           size_t data_size,
                           const bytes32 topics[],
-                          size_t num_topics) noexcept override {
+                          size_t num_topics) override {
         printhex(addr.bytes, 20);prints("\n");
         printhex(data, data_size);prints("\n");
         for (uint32_t i=0;i<num_topics;i++) {
