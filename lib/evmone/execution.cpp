@@ -29,6 +29,7 @@
 #include <memory>
 
 constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
+
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size);
 
 namespace evmone
@@ -87,7 +88,7 @@ uint256be to_big_endian(int64_t balance) {
     return _balance;
 }
 
-uint256be to_big_endian(const uint8_t* data, uint32_t size) {
+uint256be to_big_endian(const uint8_t* data, int size) {
     uint256be big_encoded{};
     EOSIO_ASSERT(size <=32, "size must <=32");
     for (int i=0;i<size;i++) {
@@ -102,7 +103,7 @@ struct EVMLog {
     vector<bytes32> topics;
 };
 
-inline std::string to_hex(const uint8_t* data, uint32_t size)
+inline std::string to_hex(const uint8_t* data, int size)
 {
     static const auto hex_chars = "0123456789abcdef";
     std::string str;
@@ -115,6 +116,32 @@ inline std::string to_hex(const uint8_t* data, uint32_t size)
     }
     return str;
 }
+
+void evmc_transfer(const evmc_address& sender, const evmc_address& receiver, const evmc_uint256be& value) {
+
+//    auto _value = to_big_endian(value.bytes, 32);
+    int64_t amount = int64_t(intx::le::load<intx::uint256>(value.bytes));
+    EOSIO_ASSERT(amount <= max_amount && amount >= 0, "call:bad transfer value");
+    if (amount == 0) {
+        return;
+    }
+
+    int64_t sender_amount = eth_account_get_balance(*(eth_address*)&sender);
+    EOSIO_ASSERT(sender_amount >= amount, "call:overdraw balance!");
+    sender_amount -= amount;
+    EOSIO_ASSERT( -max_amount <= sender_amount, "subtraction underflow" );
+    EOSIO_ASSERT( sender_amount <= max_amount,  "subtraction overflow" );
+
+    int64_t receiver_amount = eth_account_get_balance(*(eth_address*)&receiver);
+    receiver_amount += amount;
+
+    EOSIO_ASSERT( -max_amount <= receiver_amount, "addition underflow" );
+    EOSIO_ASSERT( receiver_amount <= max_amount,  "addition overflow" );
+
+    eth_account_set_balance(*(eth_address*)&sender, sender_amount);
+    eth_account_set_balance(*(eth_address*)&receiver, receiver_amount);
+}
+
 
 class MyHost : public evmc::Host {
     /// @copydoc evmc_host_interface::account_exists
@@ -248,6 +275,9 @@ public:
         static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
         static evmc_address ripemd160_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03};
         static evmc_address identity_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04};
+
+//        evmc_uint256be value = msg.value;
+        evmc_transfer(msg.sender, msg.destination, msg.value);
 
         evmc_result res{};
         if (msg.destination == ecrecover_address) {
@@ -511,10 +541,8 @@ void print_result(evmc_address& address, const uint8_t* output_data, uint32_t ou
     bs = rlp::encode(bs);
     output.insert(output.end(), bs.begin(), bs.end());
 
-    // auto logs = encode_logs(host.get_logs());
-    // vec.emplace_back(logs);
-
-    // output = rlp::encode(a, b);
+    bs = encode_logs(logs);
+    output.insert(output.end(), bs.begin(), bs.end());
 
     // rlp::ByteString prefix;
     // rlp::encode_details::prefix_multiple_length(output.size(), prefix);
@@ -592,6 +620,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     vmelog("+++++++++++++++msg.kind %d\n", msg.kind);
     auto data = std::get<5>(rlp_result);
 
+    evmc_transfer(msg.sender, msg.destination, msg.value);
     if (msg.kind == EVMC_CREATE) {
         // msg.input_data = data.data();
         // msg.input_size = data.size();
@@ -615,6 +644,18 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
             eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
             print_result(msg.destination, res.output_data, res.output_size, host.get_logs());
             vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);
+        } else {
+            rlp::ByteString bs, output;
+            bs = rlp::ByteString(msg.destination.bytes, msg.destination.bytes + 20);
+            bs = rlp::encode(bs);
+            output.insert(output.end(), bs.begin(), bs.end());
+            
+            bs = rlp::ByteString();
+            bs = rlp::encode(bs);
+            output.insert(output.end(), bs.begin(), bs.end());
+
+            rlp::encode_details::prefix_multiple_length(output.size(), output);
+            printhex(output.data(), uint32_t(output.size()));
         }
     } else {
         EOSIO_ASSERT(0, "bad message kind");
