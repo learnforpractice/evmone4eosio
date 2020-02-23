@@ -145,9 +145,7 @@ public:
     }
 
     virtual bool account_exists(const address& addr) const override {
-        eth_address _addr;
-        memcpy(_addr.data(), addr.bytes, 20);
-        return eth_account_exists(_addr);
+        return eth_account_exists(*(eth_address*)addr.bytes);
     }
 
     /// @copydoc evmc_host_interface::get_storage
@@ -169,14 +167,12 @@ public:
     virtual evmc_storage_status set_storage(const address& addr,
                                             const bytes32& key,
                                             const bytes32& value) override {
-        eth_address _addr;
         key256 _key;
         value256 _value;
 
         memcpy(_key.data(), key.bytes, 32);
-        memcpy(_addr.data(), addr.bytes, 20);
         memcpy(_value.data(), value.bytes, 32);
-        bool ret = eth_account_set_value(_addr, _key, _value);
+        bool ret = eth_account_set_value(*(eth_address*)&addr, _key, _value);
         (void)ret;
         return EVMC_STORAGE_MODIFIED;
 
@@ -189,26 +185,19 @@ public:
 
     /// @copydoc evmc_host_interface::get_balance
     virtual uint256be get_balance(const address& addr) const override {
-        eth_address _addr;
-        memcpy(_addr.data(), addr.bytes, 20);
-        int64_t balance = eth_account_get_balance(_addr);
+        int64_t balance = eth_account_get_balance(ETH_ADDRESS(addr));
         return to_big_endian(balance);
     }
 
     /// @copydoc evmc_host_interface::get_code_size
     virtual size_t get_code_size(const address& addr) const override {
-        eth_address _addr;
-        memcpy(_addr.data(), addr.bytes, 20);
-        return eth_account_get_code_size(_addr);
+        return eth_account_get_code_size(ETH_ADDRESS(addr));
     }
 
     /// @copydoc evmc_host_interface::get_code_hash
     virtual bytes32 get_code_hash(const address& addr) const override {
-        eth_address _addr;
-        memcpy(_addr.data(), addr.bytes, 20);
-
         vector<uint8_t> code;
-        eth_account_get_code(_addr, code);
+        eth_account_get_code(ETH_ADDRESS(addr), code);
 
         ethash::hash256 hash;
         memset(hash.bytes, 0, 32);
@@ -235,19 +224,13 @@ public:
 
     /// @copydoc evmc_host_interface::selfdestruct
     virtual void selfdestruct(const address& addr, const address& beneficiary) override {
-        eth_address _addr;
-        memcpy(_addr.data(), addr.bytes, 20);
-
-        eth_address _addr_beneficiary;
-        memcpy(_addr_beneficiary.data(), beneficiary.bytes, 20);
-
-        int64_t balance_addr = eth_account_get_balance(_addr);
-        int64_t balance_beneficiary = eth_account_get_balance(_addr_beneficiary);
+        int64_t balance_addr = eth_account_get_balance(ETH_ADDRESS(addr));
+        int64_t balance_beneficiary = eth_account_get_balance(ETH_ADDRESS(beneficiary));
         balance_beneficiary += balance_addr;
 
-        eth_account_set_balance(_addr, 0);
-        eth_account_set_balance(_addr_beneficiary, balance_beneficiary);
-        eth_account_clear_code(_addr);
+        eth_account_set_balance(ETH_ADDRESS(addr), 0);
+        eth_account_set_balance(ETH_ADDRESS(beneficiary), balance_beneficiary);
+        eth_account_clear_code(ETH_ADDRESS(addr));
     }
 
 #if 0
@@ -602,9 +585,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         msg.destination = new_address;
     } else {
         EOSIO_ASSERT(address.size() == 20, "bad destination address");
-        eth_address _address;
-        memcpy(_address.data(), address.data(), 20);
-        eth_account_check_address(_address);
+        eth_account_check_address(*(eth_address*)address.data());
         msg.kind = EVMC_CALL;
         memcpy(msg.destination.bytes, address.data(), 20);
     }
