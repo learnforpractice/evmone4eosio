@@ -15,6 +15,7 @@
 
 //#include <eEVM/util.h>
 
+
 #define EOSIO_ASSERT(a, b) \
     if (!(a)) { \
         print_stacktrace(); \
@@ -22,6 +23,8 @@
     eosio_assert(a, b);
 
 #include <memory>
+
+constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
 
 namespace evmone
 {
@@ -230,18 +233,28 @@ public:
 #endif
     /// @copydoc evmc_host_interface::call
     virtual result call(const evmc_message& msg) override {
+        static evmc_address sha256_address{0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
         evmc_result res;
-        vector<uint8_t> code;
-        eth_account_get_code(*(eth_address*)&msg.sender, code);
-        //TODO: call precompiled code
-        if (code.size()) {
-            auto host = MyHost();
-            auto evm = evmc::VM{evmc_create_evmone()};
-            auto ret = evm.execute(host, EVMC_ISTANBUL, msg, code.data(), code.size());
-            append_logs(host);
-            return ret;
-        } else {
+
+        if (msg.destination == sha256_address) {
+            struct checksum256 hash{};
+            sha256((char *)msg.input_data, msg.input_size, &hash);
+            res.status_code = EVMC_SUCCESS;
+            res = evmc_make_result(EVMC_SUCCESS, max_gas_limit, (uint8_t *)&hash, sizeof(hash));
             return result(res);
+        } else {
+            vector<uint8_t> code;
+            eth_account_get_code(*(eth_address*)&msg.sender, code);
+            //TODO: call precompiled code
+            if (code.size()) {
+                auto host = MyHost();
+                auto evm = evmc::VM{evmc_create_evmone()};
+                auto ret = evm.execute(host, EVMC_ISTANBUL, msg, code.data(), code.size());
+                append_logs(host);
+                return ret;
+            } else {
+                return result(res);
+            }
         }
     }
 
@@ -290,8 +303,6 @@ public:
         logs.emplace_back(log);
     }
 };
-
-constexpr auto gas_limit = std::numeric_limits<int64_t>::max();
 
 #if 0
 enum evmc_call_kind
@@ -444,7 +455,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     evmc_address new_address;
 
     auto msg = evmc_message{};
-    msg.gas = gas_limit;
+    msg.gas = max_gas_limit;
 
 //        std::cout << (uint64_t)std::get<3>(result) << std::endl; //to
     
