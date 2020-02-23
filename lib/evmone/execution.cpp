@@ -29,6 +29,7 @@
 #include <memory>
 
 constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
+extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size);
 
 namespace evmone
 {
@@ -86,7 +87,7 @@ uint256be to_big_endian(int64_t balance) {
     return _balance;
 }
 
-uint256be to_big_endian(uint8_t* data, uint32_t size) {
+uint256be to_big_endian(const uint8_t* data, uint32_t size) {
     uint256be big_encoded{};
     EOSIO_ASSERT(size <=32, "size must <=32");
     for (int i=0;i<size;i++) {
@@ -264,8 +265,38 @@ public:
         static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
         static evmc_address ripemd160_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03};
 
-        evmc_result res;
+        evmc_result res{};
         if (msg.destination == ecrecover_address) {
+            EOSIO_ASSERT(msg.input_size == 128, "ecrecover: bad input size!");
+            uint8_t _v[32];
+            memcpy(_v, msg.input_data+32, 32);
+            auto __v = to_big_endian(msg.input_data+32, 32);
+            memcpy(_v, __v.bytes, 32);
+            intx::uint256 v = intx::le::load<intx::uint256>(_v);
+            vmelog("+++++++++++v: %d\n", (int)v);
+            if (v >= 27 && v <= 28) {
+                /*
+                hash: 256bit
+                v: 256bit
+                r: 256bit
+                s: 256bit
+                */
+                uint8_t hash[32];
+                uint8_t public_key[65];
+                uint8_t signature[65];
+                const uint8_t *hash_message = msg.input_data;
+                memset(public_key, 0, 65);
+                memcpy(signature, msg.input_data+64, 64);
+                signature[64] = uint8_t(v-27);
+                evm_recover_key(signature, 65, hash_message, 32, public_key, 65);
+                auto hash256 = ethash::keccak256(public_key+1, 64);
+
+                memset(hash, 0, 32);
+                memcpy(hash+12, (char*)&hash256 + 12, 20);
+                res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
+            }
+            // bytes32 *r = (bytes32*)msg.input_data + 2;
+            // bytes32 *s = (bytes32*)msg.input_data + 3;
             return result(res);
         } else if (msg.destination == sha256_address) {
             struct checksum256 hash{};
@@ -392,7 +423,7 @@ extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _
     // prints("\n");
 
     int v = _signature[64];
-    EOSIO_ASSERT(v > 3, "bad signature");
+    EOSIO_ASSERT(v < 3, "bad signature");
 
     secp256k1_ecdsa_recoverable_signature recoverable_signature;
     if (!secp256k1_ecdsa_recoverable_signature_parse_compact(s_ctx, &recoverable_signature, _signature, v)) {
