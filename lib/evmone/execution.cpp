@@ -230,7 +230,6 @@ public:
 #endif
     /// @copydoc evmc_host_interface::call
     virtual result call(const evmc_message& msg) override {
-        (void)msg;
         evmc_result res;
         vector<uint8_t> code;
         eth_account_get_code(*(eth_address*)&msg.sender, code);
@@ -393,46 +392,43 @@ struct EVMLog {
 */
 
 rlp::ByteString encode_topics(vector<bytes32>& topics) {
-    vector<rlp::ByteString> vec;
     rlp::ByteString bs, output;
 
     for (auto& topic: topics) {
         bs = rlp::ByteString(topic.bytes, topic.bytes + 20);
-        vec.emplace_back(bs);
+        bs = rlp::encode(bs);
+        output.insert(output.end(), bs.begin(), bs.end());
     }
 
-    output = rlp::encode(vec);
     rlp::encode_details::prefix_multiple_length(output.size(), output);
     return output;
 }
 
 rlp::ByteString encode_log(EVMLog& log) {
-    vector<rlp::ByteString> vec;
     rlp::ByteString bs, output;
 
     bs = rlp::ByteString(log.addr.bytes, log.addr.bytes + 20);
-    vec.emplace_back(bs);
+    bs = rlp::encode(bs);
+    output.insert(output.end(), bs.begin(), bs.end());
     
     bs = rlp::ByteString(log.data.data(), log.data.data() + log.data.size());
-    vec.emplace_back(bs);
+    bs = rlp::encode(bs);
+    output.insert(output.end(), bs.begin(), bs.end());
 
     bs = encode_topics(log.topics);
-    vec.emplace_back(bs);
-
-    output = rlp::encode(vec);
+    output.insert(output.end(), bs.begin(), bs.end());
 
     rlp::encode_details::prefix_multiple_length(output.size(), output);
     return output;
 }
 
 rlp::ByteString encode_logs(vector<EVMLog>& logs) {
-    vector<rlp::ByteString> vec;
+    rlp::ByteString output;
     for (auto& log: logs) {
-        auto _log = encode_log(log);
-        vec.emplace_back(_log);
+        auto bs = encode_log(log);
+        output.insert(output.end(), bs.begin(), bs.end());
     }
 
-    auto output = rlp::encode(vec);
     rlp::encode_details::prefix_multiple_length(output.size(), output);
     return output;
 }
