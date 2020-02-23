@@ -86,6 +86,15 @@ uint256be to_big_endian(int64_t balance) {
     return _balance;
 }
 
+uint256be to_big_endian(uint8_t* data, uint32_t size) {
+    uint256be big_encoded{};
+    EOSIO_ASSERT(size <=32, "size must <=32");
+    for (int i=0;i<size;i++) {
+        big_encoded.bytes[31-i] = data[i];
+    }
+    return big_encoded;
+}
+
 struct EVMLog {
     address addr;
     vector<uint8_t> data;
@@ -253,17 +262,22 @@ public:
     virtual result call(const evmc_message& msg) override {
         static evmc_address ecrecover_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
         static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
-        evmc_result res;
-        string hex_str = to_hex(msg.destination.bytes, 20);
-        vmelog("+++++++++++call %s\n", hex_str.c_str());
+        static evmc_address ripemd160_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03};
 
+        evmc_result res;
         if (msg.destination == ecrecover_address) {
             return result(res);
         } else if (msg.destination == sha256_address) {
             struct checksum256 hash{};
             sha256((char *)msg.input_data, msg.input_size, &hash);
             vmelog("++++++++++call sha256, input: %s\n", msg.input_data);
-            res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, sizeof(hash));
+            res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
+            return result(res);
+        } else if (msg.destination == ripemd160_address) {
+            uint8_t hash[32];
+            memset(hash, 0, 32);
+            ripemd160((char *)msg.input_data, msg.input_size, (struct checksum160*)&hash[12]);
+            res = evmc_make_result(EVMC_SUCCESS, 0, hash, 32);
             return result(res);
         } else {
             vector<uint8_t> code;
