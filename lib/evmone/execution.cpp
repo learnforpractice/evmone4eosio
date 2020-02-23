@@ -264,6 +264,7 @@ public:
         static evmc_address ecrecover_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
         static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
         static evmc_address ripemd160_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03};
+        static evmc_address identity_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04};
 
         evmc_result res{};
         if (msg.destination == ecrecover_address) {
@@ -309,6 +310,9 @@ public:
             memset(hash, 0, 32);
             ripemd160((char *)msg.input_data, msg.input_size, (struct checksum160*)&hash[12]);
             res = evmc_make_result(EVMC_SUCCESS, 0, hash, 32);
+            return result(res);
+        } else if (msg.destination == identity_address) {
+            res = evmc_make_result(EVMC_SUCCESS, 0, msg.input_data, msg.input_size);
             return result(res);
         } else {
             vector<uint8_t> code;
@@ -576,6 +580,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         hash256 = ethash::keccak256(hash, 32);
         printhex(&hash256, 32);
         memcpy(msg.sender.bytes, (char*)&hash256 + 12, 20);
+        eth_account_check_address(*(eth_address*)&msg.sender);
     }
 
     uint32_t nonce = 0;
@@ -597,6 +602,9 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         msg.destination = new_address;
     } else {
         EOSIO_ASSERT(address.size() == 20, "bad destination address");
+        eth_address _address;
+        memcpy(_address.data(), address.data(), 20);
+        eth_account_check_address(_address);
         msg.kind = EVMC_CALL;
         memcpy(msg.destination.bytes, address.data(), 20);
     }
