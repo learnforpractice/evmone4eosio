@@ -13,6 +13,10 @@
 #include <ethash/keccak.hpp>
 #include "stacktrace.h"
 
+#ifndef __WASM
+#include <vm_api/vm_api.h>
+#endif
+
 //#include <eEVM/util.h>
 
 
@@ -87,6 +91,20 @@ struct EVMLog {
     vector<uint8_t> data;
     vector<bytes32> topics;
 };
+
+inline std::string to_hex(const uint8_t* data, uint32_t size)
+{
+    static const auto hex_chars = "0123456789abcdef";
+    std::string str;
+    str.reserve(size * 2);
+    for (int i=0;i<size;i++)
+    {
+        uint8_t b = data[i];
+        str.push_back(hex_chars[uint8_t(b) >> 4]);
+        str.push_back(hex_chars[uint8_t(b) & 0xf]);
+    }
+    return str;
+}
 
 class MyHost : public evmc::Host {
     /// @copydoc evmc_host_interface::account_exists
@@ -233,23 +251,28 @@ public:
 #endif
     /// @copydoc evmc_host_interface::call
     virtual result call(const evmc_message& msg) override {
-        static evmc_address sha256_address{0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+        static evmc_address ecrecover_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
+        static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
         evmc_result res;
+        string hex_str = to_hex(msg.destination.bytes, 20);
+        vmelog("+++++++++++call %s\n", hex_str.c_str());
 
-        if (msg.destination == sha256_address) {
+        if (msg.destination == ecrecover_address) {
+            return result(res);
+        } else if (msg.destination == sha256_address) {
             struct checksum256 hash{};
             sha256((char *)msg.input_data, msg.input_size, &hash);
-            res.status_code = EVMC_SUCCESS;
-            res = evmc_make_result(EVMC_SUCCESS, max_gas_limit, (uint8_t *)&hash, sizeof(hash));
+            vmelog("++++++++++call sha256, input: %s\n", msg.input_data);
+            res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, sizeof(hash));
             return result(res);
         } else {
             vector<uint8_t> code;
-            eth_account_get_code(*(eth_address*)&msg.sender, code);
-            //TODO: call precompiled code
+            eth_account_get_code(*(eth_address*)&msg.destination, code);
             if (code.size()) {
                 auto host = MyHost();
                 auto evm = evmc::VM{evmc_create_evmone()};
                 auto ret = evm.execute(host, EVMC_ISTANBUL, msg, code.data(), code.size());
+                vmelog("++++++++gas left %d\n", ret.gas_left);
                 append_logs(host);
                 return ret;
             } else {
@@ -444,28 +467,54 @@ rlp::ByteString encode_logs(vector<EVMLog>& logs) {
     return output;
 }
 
+void print_result(evmc_address& address, const uint8_t* output_data, uint32_t output_size, vector<EVMLog>& logs) {
+    vector<rlp::ByteString> vec;
+    rlp::ByteString bs, output;
+
+    bs = rlp::ByteString(address.bytes, address.bytes + 20);
+    bs = rlp::encode(bs);
+    output.insert(output.end(), bs.begin(), bs.end());
+    
+    bs = rlp::ByteString(output_data, output_data + output_size);
+    bs = rlp::encode(bs);
+    output.insert(output.end(), bs.begin(), bs.end());
+
+    // auto logs = encode_logs(host.get_logs());
+    // vec.emplace_back(logs);
+
+    // output = rlp::encode(a, b);
+
+    // rlp::ByteString prefix;
+    // rlp::encode_details::prefix_multiple_length(output.size(), prefix);
+    // printhex(prefix.data(), uint32_t(prefix.size()));
+    // printhex(output.data(), uint32_t(output.size()));
+
+    rlp::encode_details::prefix_multiple_length(output.size(), output);
+    printhex(output.data(), uint32_t(output.size()));
+}
+
 extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
     EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
 
-    auto result = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, uint256_t, rlp::ByteString, uint8_t, uint256_t, uint256_t>(raw_trx, raw_trx_size);
-    // std::cout << (uint64_t)std::get<0>(result) << std::endl; //nonce
-    // std::cout << (uint64_t)std::get<1>(result) << std::endl; //gas_price
-    // std::cout << (uint64_t)std::get<2>(result) << std::endl; //gas_limit
+    auto rlp_result = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, uint256_t, rlp::ByteString, uint8_t, uint256_t, uint256_t>(raw_trx, raw_trx_size);
+    // std::cout << (uint64_t)std::get<0>(rlp_result) << std::endl; //nonce
+    // std::cout << (uint64_t)std::get<1>(rlp_result) << std::endl; //gas_price
+    // std::cout << (uint64_t)std::get<2>(rlp_result) << std::endl; //gas_limit
 
     evmc_address new_address;
 
     auto msg = evmc_message{};
     msg.gas = max_gas_limit;
 
-//        std::cout << (uint64_t)std::get<3>(result) << std::endl; //to
+//        std::cout << (uint64_t)std::get<3>(rlp_result) << std::endl; //to
     
-    auto value = std::get<4>(result); //value
+    auto value = std::get<4>(rlp_result); //value
     memcpy(msg.value.bytes, intx::as_bytes(value), 32);
 
-    // std::cout << (uint64_t)std::get<5>(result) << std::endl; // data
-    uint8_t v = std::get<6>(result); //v
-    auto r = std::get<7>(result); //r
-    auto s = std::get<8>(result); //s
+    // std::cout << (uint64_t)std::get<5>(rlp_result) << std::endl; // data
+    uint8_t v = std::get<6>(rlp_result); //v
+    auto r = std::get<7>(rlp_result); //r
+    auto s = std::get<8>(rlp_result); //s
 
     if (r == 0 && s == 0) {
         memcpy(msg.sender.bytes, sender_address, 20);
@@ -488,7 +537,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     bool ret = eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
     EOSIO_ASSERT(ret, "get_nonce: bad nonce");
 
-    auto address = std::get<3>(result);
+    auto address = std::get<3>(rlp_result);
     if (address.size() == 0) {
         msg.kind = EVMC_CREATE;
         rlp::ByteString addr;
@@ -506,44 +555,37 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         msg.kind = EVMC_CALL;
         memcpy(msg.destination.bytes, address.data(), 20);
     }
-
-    auto data = std::get<5>(result);
-    msg.input_data = data.data();
-    msg.input_size = data.size();
-
-    auto host = MyHost();
-    auto evm = evmc::VM{evmc_create_evmone()};
-    auto res = evm.execute(host, EVMC_ISTANBUL, msg, data.data(), data.size());
-    eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
+    vmelog("+++++++++++++++msg.kind %d\n", msg.kind);
+    auto data = std::get<5>(rlp_result);
 
     if (msg.kind == EVMC_CREATE) {
+        // msg.input_data = data.data();
+        // msg.input_size = data.size();
+        auto host = MyHost();
+        auto evm = evmc::VM{evmc_create_evmone()};
+        auto res = evm.execute(host, EVMC_ISTANBUL, msg, data.data(), data.size());
+        eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
         vector<uint8_t> code(res.output_data, res.output_data + res.output_size);
         eth_account_set_code(*(eth_address*)&new_address, code);
+        print_result(msg.destination, res.output_data, res.output_size, host.get_logs());
+    } else if (msg.kind == EVMC_CALL) {
+        msg.input_data = data.data();
+        msg.input_size = data.size();
+        vector<uint8_t> code;
+        eth_account_get_code(*(eth_address*)&msg.destination, code);
+        vmelog("+++++code size: %d\n", code.size());
+        if (code.size() > 0) {
+            auto host = MyHost();
+            auto evm = evmc::VM{evmc_create_evmone()};
+            auto res = evm.execute(host, EVMC_ISTANBUL, msg, code.data(), code.size());
+            eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
+            print_result(msg.destination, res.output_data, res.output_size, host.get_logs());
+            vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);
+        }
+    } else {
+        EOSIO_ASSERT(0, "bad message kind");
     }
 
-    vector<rlp::ByteString> vec;
-    rlp::ByteString bs, output;
-
-    bs = rlp::ByteString(new_address.bytes, new_address.bytes + 20);
-    bs = rlp::encode(bs);
-    output.insert(output.end(), bs.begin(), bs.end());
-    
-    bs = rlp::ByteString(res.output_data, res.output_data + res.output_size);
-    bs = rlp::encode(bs);
-    output.insert(output.end(), bs.begin(), bs.end());
-
-    // auto logs = encode_logs(host.get_logs());
-    // vec.emplace_back(logs);
-
-    // output = rlp::encode(a, b);
-
-    // rlp::ByteString prefix;
-    // rlp::encode_details::prefix_multiple_length(output.size(), prefix);
-    // printhex(prefix.data(), uint32_t(prefix.size()));
-    // printhex(output.data(), uint32_t(output.size()));
-
-    rlp::encode_details::prefix_multiple_length(output.size(), output);
-    printhex(output.data(), uint32_t(output.size()));
     return 1;
 }
 
