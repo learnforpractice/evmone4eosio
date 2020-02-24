@@ -6,10 +6,14 @@
 #include <regex>
 #include <stdexcept>
 
+#include <eosiolib/system.h>
+#define EOSIO_THROW(msg) eosio_assert(false, msg)
+
+
 bytes from_hex(std::string_view hex)
 {
     if (hex.length() % 2 == 1)
-        throw std::length_error{"the length of the input is odd"};
+        EOSIO_THROW("the length of the input is odd");
 
     bytes bs;
     bs.reserve(hex.length() / 2);
@@ -25,7 +29,7 @@ bytes from_hex(std::string_view hex)
         else if (h >= 'A' && h <= 'F')
             v = h - 'A' + 10;
         else
-            throw std::out_of_range{"not a hex digit"};
+            EOSIO_THROW("not a hex digit");
 
         if (i % 2 == 0)
             b = v << 4;
