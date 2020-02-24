@@ -14,6 +14,7 @@
 
 #ifndef __WASM
 #include "stacktrace.h"
+#include <vm_api/vm_api.h>
 #endif
 
 //#include <eEVM/util.h>
@@ -30,6 +31,9 @@
 #endif
 
 #include <memory>
+
+//#define EVMC_VERSION EVMC_BYZANTIUM
+#define EVMC_VERSION EVMC_ISTANBUL
 
 constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
 
@@ -280,7 +284,12 @@ public:
 
 //        evmc_uint256be value = msg.value;
         evmc_transfer(msg.sender, msg.destination, msg.value);
-
+// {
+//     #ifndef __WASM
+//     auto hex = to_hex(msg.destination.bytes, 20);
+//     vmelog("+++++++%s\n", hex.c_str());
+//     #endif
+// }
         evmc_result res{};
         if (msg.destination == ecrecover_address) {
             EOSIO_ASSERT(msg.input_size == 128, "ecrecover: bad input size!");
@@ -335,7 +344,7 @@ public:
             if (code.size()) {
                 auto host = MyHost();
                 auto evm = evmc::VM{evmc_create_evmone()};
-                auto ret = evm.execute(host, EVMC_ISTANBUL, msg, code.data(), code.size());
+                auto ret = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
                 //vmelog("++++++++gas left %d\n", ret.gas_left);
                 append_logs(host);
                 return ret;
@@ -632,7 +641,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         // msg.input_size = data.size();
         auto host = MyHost();
         auto evm = evmc::VM{evmc_create_evmone()};
-        auto res = evm.execute(host, EVMC_ISTANBUL, msg, data.data(), data.size());
+        auto res = evm.execute(host, EVMC_VERSION, msg, data.data(), data.size());
         eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
         vector<uint8_t> code(res.output_data, res.output_data + res.output_size);
         eth_account_set_code(*(eth_address*)&new_address, code);
@@ -646,7 +655,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         if (code.size() > 0) {
             auto host = MyHost();
             auto evm = evmc::VM{evmc_create_evmone()};
-            auto res = evm.execute(host, EVMC_ISTANBUL, msg, code.data(), code.size());
+            auto res = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
             eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
             print_result(msg.destination, res.output_data, res.output_size, host.get_logs());
             //vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);

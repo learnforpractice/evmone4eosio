@@ -1377,6 +1377,9 @@ constexpr op_table create_op_table_byzantium() noexcept
 {
     auto table = create_op_table_frontier();
     table[OP_DELEGATECALL] = {op_delegatecall, 40, 6, -5};
+
+    table[OP_DELEGATECALL] = {op_delegatecall, 40, 6, -5};
+
     table[OP_BALANCE].gas_cost = 400;
     table[OP_EXTCODESIZE].gas_cost = 700;
     table[OP_EXTCODECOPY].gas_cost = 700;
@@ -1385,7 +1388,6 @@ constexpr op_table create_op_table_byzantium() noexcept
     table[OP_CALLCODE].gas_cost = 700;
     table[OP_DELEGATECALL].gas_cost = 700;
     table[OP_SELFDESTRUCT].gas_cost = 5000;
-
 
     table[OP_RETURNDATASIZE] = {op_returndatasize, 2, 0, 1};
     table[OP_RETURNDATACOPY] = {op_returndatacopy, 3, 3, -3};
@@ -1404,10 +1406,16 @@ constexpr op_table create_op_table_constantinople() noexcept
     table[OP_CREATE2] = {op_create2, 32000, 4, -3};
     return table;
 }
-
+#endif
 constexpr op_table create_op_table_istanbul() noexcept
 {
-    auto table = create_op_table_constantinople();
+    auto table = create_op_table_byzantium();
+    table[OP_SHL] = {op_shl, 3, 2, -1};
+    table[OP_SHR] = {op_shr, 3, 2, -1};
+    table[OP_SAR] = {op_sar, 3, 2, -1};
+    table[OP_EXTCODEHASH] = {op_extcodehash, 400, 1, 0};
+    table[OP_CREATE2] = {op_create2, 32000, 4, -3};
+
     table[OP_BALANCE] = {op_balance, 700, 1, 0};
     table[OP_CHAINID] = {op_chainid, 2, 0, 1};
     table[OP_EXTCODEHASH] = {op_extcodehash, 700, 1, 0};
@@ -1415,16 +1423,16 @@ constexpr op_table create_op_table_istanbul() noexcept
     table[OP_SLOAD] = {op_sload, 800, 1, 0};
     return table;
 }
-#endif
+
 constexpr op_table op_tables[] = {
     // create_op_table_frontier(),           // Frontier
     // create_op_table_homestead(),          // Homestead
     // create_op_table_tangerine_whistle(),  // Tangerine Whistle
     // create_op_table_tangerine_whistle(),  // Spurious Dragon
-    create_op_table_byzantium(),          // Byzantium
+    // create_op_table_byzantium(),          // Byzantium
     // create_op_table_constantinople(),     // Constantinople
     // create_op_table_constantinople(),     // Petersburg
-    // create_op_table_istanbul(),           // Istanbul
+    create_op_table_istanbul(),           // Istanbul
     // create_op_table_istanbul(),           // Berlin
 };
 // static_assert(sizeof(op_tables) / sizeof(op_tables[0]) > EVMC_MAX_REVISION,
