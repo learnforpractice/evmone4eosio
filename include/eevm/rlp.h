@@ -8,9 +8,9 @@
 #include <utility>
 #include <vector>
 #include <intx/intx.hpp>
-#include <eosiolib/system.h>
 
-#define EOSIO_THROW(msg) eosio_assert(false, msg)
+//#include <eosiolib_legacy/system.h>
+#include <eosiolib_legacy/eosiolib.h>
 
 
 using uint256_t = intx::uint256;
