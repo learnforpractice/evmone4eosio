@@ -3,10 +3,10 @@
 	url = https://github.com/learnforpractice/evmc
 [submodule "ethash"]
 	path = ethash
-	url = https://github.com/chfast/ethash
+	url = https://github.com/learnforpractice/ethash
 [submodule "intx"]
 	path = intx
-	url = https://github.com/chfast/intx
+	url = https://github.com/learnforpractice/intx
 [submodule "ethereum_vm"]
 	path = ethereum_vm
 	url = https://github.com/learnforpractice/ethereum_vm
