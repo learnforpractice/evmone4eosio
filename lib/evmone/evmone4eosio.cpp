@@ -42,6 +42,7 @@
 #define EVMC_VERSION EVMC_ISTANBUL
 
 constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
+evmc_address EmptyAddress{};
 
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size);
 
@@ -122,6 +123,52 @@ void evmc_transfer(const evmc_address& sender, const evmc_address& receiver, con
     eth_account_set_balance(*(eth_address*)&receiver, receiver_amount);
 }
 
+const char *get_status_error(evmc_status_code& status_code) {
+    switch (status_code) {
+        case EVMC_SUCCESS:
+            return "evmc success";
+        case EVMC_FAILURE:
+            return "evmc failure";
+        case EVMC_REVERT:
+            return "evmc revert";
+        case EVMC_OUT_OF_GAS:
+            return "evmc out of gas";
+        case EVMC_INVALID_INSTRUCTION:
+            return "evmc invalid instruction";
+        case EVMC_UNDEFINED_INSTRUCTION:
+            return "evmc undefined instruction";
+        case EVMC_STACK_OVERFLOW:
+            return "evmc stack overflow";
+        case EVMC_STACK_UNDERFLOW:
+            return "evmc stack underflow";
+        case EVMC_BAD_JUMP_DESTINATION:
+            return "evmc bad jump destination";
+        case EVMC_INVALID_MEMORY_ACCESS:
+            return "evmc invalid memory access";
+        case EVMC_CALL_DEPTH_EXCEEDED:
+            return "evmc call depth exceeded";
+        case EVMC_STATIC_MODE_VIOLATION:
+            return "evmc static mode violation";
+        case EVMC_PRECOMPILE_FAILURE:
+            return "evmc precompile_failure";
+        case EVMC_CONTRACT_VALIDATION_FAILURE:
+            return "evmc contract validation failure";
+        case EVMC_ARGUMENT_OUT_OF_RANGE:
+            return "evmc argument out of range";
+        case EVMC_WASM_UNREACHABLE_INSTRUCTION:
+            return "evmc wasm unreachable instruction";
+        case EVMC_WASM_TRAP:
+            return "evmc wasm trap";
+        case EVMC_INTERNAL_ERROR:
+            return "evmc internal error";
+        case EVMC_REJECTED:
+            return "evmc rejected";
+        case EVMC_OUT_OF_MEMORY:
+            return "evmc out of memory";
+        default:
+            return "unknow error";
+    }
+}
 
 class MyHost : public evmc::Host {
     /// @copydoc evmc_host_interface::account_exists
@@ -153,6 +200,7 @@ struct evmc_tx_context
         tx_context.tx_origin = _origin;
         tx_context.block_number = tapos_block_num();
         tx_context.block_timestamp = current_time()/1000000;
+        tx_context.block_gas_limit = max_gas_limit;
         int32_t id = eth_get_chain_id();
         tx_context.chain_id = to_little_endian(id);
     }
@@ -546,8 +594,10 @@ void print_result(evmc_address& address, const uint8_t* output_data, uint32_t ou
     bs = rlp::encode(bs);
     output.insert(output.end(), bs.begin(), bs.end());
 
-    bs = encode_logs(logs);
-    output.insert(output.end(), bs.begin(), bs.end());
+    if (logs.size()) {
+        bs = encode_logs(logs);
+        output.insert(output.end(), bs.begin(), bs.end());
+    }
 
     // rlp::ByteString prefix;
     // rlp::encode_details::prefix_multiple_length(output.size(), prefix);
@@ -632,10 +682,13 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         auto host = MyHost(msg.sender);
         auto evm = evmc::VM{evmc_create_evmone()};
         auto res = evm.execute(host, EVMC_VERSION, msg, data.data(), data.size());
+        print_result(msg.destination, res.output_data, res.output_size, host.get_logs());
+        if (res.status_code != EVMC_SUCCESS) {
+            EOSIO_THROW(get_status_error(res.status_code));
+        }
         eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
         vector<uint8_t> code(res.output_data, res.output_data + res.output_size);
         eth_account_set_code(*(eth_address*)&new_address, code);
-        print_result(msg.destination, res.output_data, res.output_size, host.get_logs());
     } else if (msg.kind == EVMC_CALL) {
         msg.input_data = data.data();
         msg.input_size = data.size();
@@ -646,8 +699,11 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
             auto host = MyHost(msg.sender);
             auto evm = evmc::VM{evmc_create_evmone()};
             auto res = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
+            print_result(EmptyAddress, res.output_data, res.output_size, host.get_logs());
+            if (res.status_code != EVMC_SUCCESS) {
+                EOSIO_THROW(get_status_error(res.status_code));
+            }
             eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
-            print_result(msg.destination, res.output_data, res.output_size, host.get_logs());
             //vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);
         } else {
             rlp::ByteString bs, output;
