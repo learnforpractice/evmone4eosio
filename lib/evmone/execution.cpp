@@ -11,20 +11,24 @@
 #include <secp256k1_sha256.h>
 
 #include <ethash/keccak.hpp>
-#include "stacktrace.h"
 
 #ifndef __WASM
 #include <vm_api/vm_api.h>
+#include "stacktrace.h"
 #endif
 
 //#include <eEVM/util.h>
 
-
-#define EOSIO_ASSERT(a, b) \
-    if (!(a)) { \
-        print_stacktrace(); \
-    } \
-    eosio_assert(a, b);
+#ifdef __WASM
+    #define EOSIO_ASSERT(a, b) \
+        eosio_assert(a, b);
+#else
+    #define EOSIO_ASSERT(a, b) \
+        if (!(a)) { \
+            print_stacktrace(); \
+        } \
+        eosio_assert(a, b);
+#endif
 
 #include <memory>
 
@@ -60,7 +64,6 @@ evmc_result execute(evmc_vm* /*unused*/, const evmc_host_interface* host, evmc_h
 }
 }  // namespace evmone
 
-#include <iostream>
 #include <evmc/evmc.hpp>
 #include <evmc/loader.h>
 #include <evmone/evmone.h>
@@ -287,7 +290,7 @@ public:
             auto __v = to_big_endian(msg.input_data+32, 32);
             memcpy(_v, __v.bytes, 32);
             intx::uint256 v = intx::le::load<intx::uint256>(_v);
-            vmelog("+++++++++++v: %d\n", (int)v);
+//            vmelog("+++++++++++v: %d\n", (int)v);
             if (v >= 27 && v <= 28) {
                 /*
                 hash: 256bit
@@ -315,7 +318,7 @@ public:
         } else if (msg.destination == sha256_address) {
             struct checksum256 hash{};
             sha256((char *)msg.input_data, msg.input_size, &hash);
-            vmelog("++++++++++call sha256, input: %s\n", msg.input_data);
+            //vmelog("++++++++++call sha256, input: %s\n", msg.input_data);
             res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
             return result(res);
         } else if (msg.destination == ripemd160_address) {
@@ -334,7 +337,7 @@ public:
                 auto host = MyHost();
                 auto evm = evmc::VM{evmc_create_evmone()};
                 auto ret = evm.execute(host, EVMC_ISTANBUL, msg, code.data(), code.size());
-                vmelog("++++++++gas left %d\n", ret.gas_left);
+                //vmelog("++++++++gas left %d\n", ret.gas_left);
                 append_logs(host);
                 return ret;
             } else {
@@ -420,6 +423,10 @@ extern "C" EVMC_EXPORT int evm_get_account_id(const char* account, size_t accoun
     memcpy(hash160, (char*)&hash256 + 12, 20);
     return 0;
 }
+
+#ifdef __WASM
+extern "C" void load_secp256k1_ecmult_static_context();
+#endif
 
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size) {    
     if (_signature_size != 65 || _message_len != 32 || _serialized_public_key_size != 65) {
@@ -617,7 +624,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         msg.kind = EVMC_CALL;
         memcpy(msg.destination.bytes, address.data(), 20);
     }
-    vmelog("+++++++++++++++msg.kind %d\n", msg.kind);
+    //vmelog("+++++++++++++++msg.kind %d\n", msg.kind);
     auto data = std::get<5>(rlp_result);
 
     evmc_transfer(msg.sender, msg.destination, msg.value);
@@ -636,14 +643,14 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         msg.input_size = data.size();
         vector<uint8_t> code;
         eth_account_get_code(*(eth_address*)&msg.destination, code);
-        vmelog("+++++code size: %d\n", code.size());
+        //vmelog("+++++code size: %d\n", code.size());
         if (code.size() > 0) {
             auto host = MyHost();
             auto evm = evmc::VM{evmc_create_evmone()};
             auto res = evm.execute(host, EVMC_ISTANBUL, msg, code.data(), code.size());
             eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
             print_result(msg.destination, res.output_data, res.output_size, host.get_logs());
-            vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);
+            //vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);
         } else {
             rlp::ByteString bs, output;
             bs = rlp::ByteString(msg.destination.bytes, msg.destination.bytes + 20);
@@ -676,3 +683,23 @@ struct evmc_result
     evmc_address create_address;
 };
 */
+
+#ifdef __WASM
+#include "eosiolib.h"
+
+extern "C" {
+
+#ifdef __WASM
+    int __cxa_thread_atexit(void (*func)(), void *obj, void *dso_symbol) {
+        EOSIO_THROW("bad call of __cxa_thread_atexit!");
+        return 0;
+    }
+#endif
+
+}
+namespace std {
+    bool uncaught_exception() noexcept {
+        EOSIO_THROW("bad call of uncaught_exception!");
+    }
+}
+#endif
