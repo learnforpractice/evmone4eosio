@@ -544,7 +544,7 @@ rlp::ByteString encode_topics(vector<bytes32>& topics) {
     rlp::ByteString bs, output;
 
     for (auto& topic: topics) {
-        bs = rlp::ByteString(topic.bytes, topic.bytes + 20);
+        bs = rlp::ByteString(topic.bytes, topic.bytes + 32);
         bs = rlp::encode(bs);
         output.insert(output.end(), bs.begin(), bs.end());
     }
