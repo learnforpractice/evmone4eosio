@@ -1351,7 +1351,7 @@ constexpr op_table create_op_table_frontier() noexcept
     table[OP_SELFDESTRUCT] = {op_selfdestruct, 0, 1, -1};
     return table;
 }
-
+#if 0
 constexpr op_table create_op_table_homestead() noexcept
 {
     auto table = create_op_table_frontier();
@@ -1372,17 +1372,28 @@ constexpr op_table create_op_table_tangerine_whistle() noexcept
     table[OP_SELFDESTRUCT].gas_cost = 5000;
     return table;
 }
-
+#endif
 constexpr op_table create_op_table_byzantium() noexcept
 {
-    auto table = create_op_table_tangerine_whistle();
+    auto table = create_op_table_frontier();
+    table[OP_DELEGATECALL] = {op_delegatecall, 40, 6, -5};
+    table[OP_BALANCE].gas_cost = 400;
+    table[OP_EXTCODESIZE].gas_cost = 700;
+    table[OP_EXTCODECOPY].gas_cost = 700;
+    table[OP_SLOAD].gas_cost = 200;
+    table[OP_CALL].gas_cost = 700;
+    table[OP_CALLCODE].gas_cost = 700;
+    table[OP_DELEGATECALL].gas_cost = 700;
+    table[OP_SELFDESTRUCT].gas_cost = 5000;
+
+
     table[OP_RETURNDATASIZE] = {op_returndatasize, 2, 0, 1};
     table[OP_RETURNDATACOPY] = {op_returndatacopy, 3, 3, -3};
     table[OP_STATICCALL] = {op_staticcall, 700, 6, -5};
     table[OP_REVERT] = {op_return<EVMC_REVERT>, 0, 2, -2};
     return table;
 }
-
+#if 0
 constexpr op_table create_op_table_constantinople() noexcept
 {
     auto table = create_op_table_byzantium();
@@ -1404,24 +1415,25 @@ constexpr op_table create_op_table_istanbul() noexcept
     table[OP_SLOAD] = {op_sload, 800, 1, 0};
     return table;
 }
-
+#endif
 constexpr op_table op_tables[] = {
-    create_op_table_frontier(),           // Frontier
-    create_op_table_homestead(),          // Homestead
-    create_op_table_tangerine_whistle(),  // Tangerine Whistle
-    create_op_table_tangerine_whistle(),  // Spurious Dragon
+    // create_op_table_frontier(),           // Frontier
+    // create_op_table_homestead(),          // Homestead
+    // create_op_table_tangerine_whistle(),  // Tangerine Whistle
+    // create_op_table_tangerine_whistle(),  // Spurious Dragon
     create_op_table_byzantium(),          // Byzantium
-    create_op_table_constantinople(),     // Constantinople
-    create_op_table_constantinople(),     // Petersburg
-    create_op_table_istanbul(),           // Istanbul
-    create_op_table_istanbul(),           // Berlin
+    // create_op_table_constantinople(),     // Constantinople
+    // create_op_table_constantinople(),     // Petersburg
+    // create_op_table_istanbul(),           // Istanbul
+    // create_op_table_istanbul(),           // Berlin
 };
-static_assert(sizeof(op_tables) / sizeof(op_tables[0]) > EVMC_MAX_REVISION,
-    "op table entry missing for an EVMC revision");
+// static_assert(sizeof(op_tables) / sizeof(op_tables[0]) > EVMC_MAX_REVISION,
+//     "op table entry missing for an EVMC revision");
 }  // namespace
 
 EVMC_EXPORT const op_table& get_op_table(evmc_revision rev) noexcept
 {
-    return op_tables[rev];
+//    return op_tables[rev];
+    return op_tables[0];
 }
 }  // namespace evmone
