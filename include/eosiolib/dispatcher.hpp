@@ -6,7 +6,9 @@
 #include <boost/fusion/include/std_tuple.hpp>
 
 #include <boost/mp11/tuple.hpp>
-#define N(X) ::eosio::string_to_name(#X)
+
+#warning "<eosiolib/dispatcher.hpp> is deprecated use <eosio/dispatcher.hpp>"
+
 namespace eosio {
 
    template<typename Contract, typename FirstAction>
@@ -39,31 +41,24 @@ namespace eosio {
    }
 
    /**
-    * @defgroup dispatcher Dispatcher API
-    * @brief Defines functions to dispatch action to proper action handler inside a contract
-    * @ingroup contractdev
-    */
-   
-   /**
-    * @defgroup dispatchercpp Dispatcher C++ API
+    * @addtogroup dispatcher Dispatcher C++ API
+    * @ingroup core
     * @brief Defines C++ functions to dispatch action to proper action handler inside a contract
-    * @ingroup dispatcher
     * @{
     */
 
    /**
     * Unpack the received action and execute the correponding action handler
-    * 
-    * @brief Unpack the received action and execute the correponding action handler
+    *
     * @tparam T - The contract class that has the correponding action handler, this contract should be derived from eosio::contract
-    * @tparam Q - The namespace of the action handler function 
+    * @tparam Q - The namespace of the action handler function
     * @tparam Args - The arguments that the action handler accepts, i.e. members of the action
     * @param obj - The contract object that has the correponding action handler
     * @param func - The action handler
-    * @return true  
+    * @return true
     */
-   template<typename T, typename Q, typename... Args>
-   bool execute_action( T* obj, void (Q::*func)(Args...)  ) {
+   template<typename T, typename... Args>
+   bool execute_action( name self, name code, void (T::*func)(Args...)  ) {
       size_t size = action_data_size();
 
       //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
@@ -74,82 +69,59 @@ namespace eosio {
          read_action_data( buffer, size );
       }
 
-      auto args = unpack<std::tuple<std::decay_t<Args>...>>( (char*)buffer, size );
+      std::tuple<std::decay_t<Args>...> args;
+      datastream<const char*> ds((char*)buffer, size);
+      ds >> args;
 
-      if ( max_stack_buffer_size < size ) {
-         free(buffer);
-      }
+      T inst(self, code, ds);
 
-      auto f2 = [&]( auto... a ){  
-         (obj->*func)( a... ); 
+      auto f2 = [&]( auto... a ){
+         ((&inst)->*func)( a... );
       };
 
       boost::mp11::tuple_apply( f2, args );
+      if ( max_stack_buffer_size < size ) {
+         free(buffer);
+      }
       return true;
    }
- /// @}  dispatcher
 
-// Helper macro for EOSIO_API
-#define EOSIO_API_CALL( r, OP, elem ) \
-   case ::eosio::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
-      eosio::execute_action( &thiscontract, &OP::elem ); \
-      break;
+   /// @}
 
-// Helper macro for EOSIO_ABI
-#define EOSIO_API( TYPE,  MEMBERS ) \
-   BOOST_PP_SEQ_FOR_EACH( EOSIO_API_CALL, TYPE, MEMBERS )
+ // Helper macro for EOSIO_DISPATCH_INTERNAL
+ #define EOSIO_DISPATCH_INTERNAL( r, OP, elem ) \
+    case eosio::name( BOOST_PP_STRINGIZE(elem) ).value: \
+       eosio::execute_action( eosio::name(receiver), eosio::name(code), &OP::elem ); \
+       break;
+
+ // Helper macro for EOSIO_DISPATCH
+ #define EOSIO_DISPATCH_HELPER( TYPE,  MEMBERS ) \
+    BOOST_PP_SEQ_FOR_EACH( EOSIO_DISPATCH_INTERNAL, TYPE, MEMBERS )
 
 /**
  * @addtogroup dispatcher
- * @{
- */
-
-/** 
  * Convenient macro to create contract apply handler
- * To be able to use this macro, the contract needs to be derived from eosio::contract
- * 
- * @brief Convenient macro to create contract apply handler 
+ *
+ * @note To be able to use this macro, the contract needs to be derived from eosio::contract
  * @param TYPE - The class name of the contract
  * @param MEMBERS - The sequence of available actions supported by this contract
- * 
+ *
  * Example:
  * @code
- * EOSIO_ABI( eosio::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
+ * EOSIO_DISPATCH( eosio::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
  * @endcode
  */
-#define EOSIO_ABI( TYPE, MEMBERS ) \
+#define EOSIO_DISPATCH( TYPE, MEMBERS ) \
 extern "C" { \
+   [[eosio::wasm_entry]] \
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
-      auto self = receiver; \
-      if( action == N(onerror)) { \
-         /* onerror is only valid if it is for the "eosio" code account and authorized by "eosio"'s "active permission */ \
-         eosio_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account"); \
-      } \
-      if( code == self || action == N(onerror) ) { \
-         TYPE thiscontract( self ); \
+      if( code == receiver ) { \
          switch( action ) { \
-            EOSIO_API( TYPE, MEMBERS ) \
+            EOSIO_DISPATCH_HELPER( TYPE, MEMBERS ) \
          } \
          /* does not allow destructor of thiscontract to run: eosio_exit(0); */ \
       } \
    } \
 } \
- /// @}  dispatcher
-
-
-   /*
-   template<typename T>
-   struct dispatcher {
-      dispatcher( account_name code ):_contract(code){}
-
-      template<typename FuncPtr>
-      void dispatch( account_name action, FuncPtr ) {
-      }
-
-      T contract;
-   };
-
-   void dispatch( account_name code, account_name action, 
-   */
 
 }

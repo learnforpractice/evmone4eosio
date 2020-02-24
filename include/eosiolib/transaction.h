@@ -2,22 +2,18 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
-#include <eosiolib/types.h>
+#pragma once
+#include "types.h"
 
-#ifndef TRANSACTION_H
-#define TRANSACTION_H
-
-#ifdef __cplusplus
+#warning "<eosiolib/transaction.h> is deprecated use <eosio/transaction.h>. If you are using C++ the .h header files will be removed from inclusion entirely in v1.7.0"
 extern "C" {
-#endif
    /**
-    * @defgroup transactionapi Transaction API
-    * @ingroup contractdev
-    * @brief Defines API for sending transactions and inline actions
+    * @addtogroup transaction_c Transaction API
+    * @ingroup c_api
+    * @brief Defines C API for sending transactions and inline actions
     *
-    *
-    * Deferred transactions will not be processed until a future block.  They
-    * can therefore have no effect on the success or failure of their parent
+    * @details Deferred transactions will not be processed until a future block.  They
+    * can therefore have no effect on the success of failure of their parent
     * transaction so long as they appear well formed.  If any other condition
     * causes the parent transaction to be marked as failing, then the deferred
     * transaction will never be processed.
@@ -31,34 +27,26 @@ extern "C" {
     * ends such that the success or failure of the parent transaction is
     * dependent on the success of the message. If an inline message fails in
     * processing then the whole tree of transactions and actions rooted in the
-    * block will be marked as failing and none of effects on the database will
+    * block will me marked as failing and none of effects on the database will
     * persist.
     *
     * Inline actions and Deferred transactions must adhere to the permissions
     * available to the parent transaction or, in the future, delegated to the
     * contract account for future use.
-    */
-
-   /**
-    * @defgroup transactioncapi Transaction C API
-    * @ingroup transactionapi
-    * @brief Defines API for sending transactions
-    *
     * @{
     */
 
     /**
      *  Sends a deferred transaction.
      *
-     *  @brief Sends a deferred transaction.
      *  @param sender_id - ID of sender
      *  @param payer - Account paying for RAM
      *  @param serialized_transaction - Pointer of serialized transaction to be deferred
      *  @param size - Size to reserve
      *  @param replace_existing - f this is `0` then if the provided sender_id is already in use by an in-flight transaction from this contract, which will be a failing assert. If `1` then transaction will atomically cancel/replace the inflight transaction
      */
-#ifdef __cplusplus
-     WASM_IMPORT void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size, uint32_t replace_existing = 0);
+   __attribute__((eosio_wasm_import))
+   void send_deferred(const uint128_t& sender_id, capi_name payer, const char *serialized_transaction, size_t size, uint32_t replace_existing = 0);
 
     /**
      *  Cancels a deferred transaction.
@@ -73,14 +61,15 @@ extern "C" {
      *  @return 1 if transaction was canceled, 0 if transaction was not found
      *
      *  Example:
-     *
+*
      *  @code
      *  id = 0xffffffffffffffff
      *  cancel_deferred( id );
      *  @endcode
      */
-   WASM_IMPORT int cancel_deferred(const uint128_t& sender_id);
-#endif
+   __attribute__((eosio_wasm_import))
+   int cancel_deferred(const uint128_t& sender_id);
+
    /**
     * Access a copy of the currently executing transaction.
     *
@@ -89,7 +78,8 @@ extern "C" {
     * @param size - the size of the buffer, 0 to return required size
     * @return the size of the transaction written to the buffer, or number of bytes that can be copied if size==0 passed
     */
-   WASM_IMPORT size_t read_transaction(char *buffer, size_t size);
+   __attribute__((eosio_wasm_import))
+   size_t read_transaction(char *buffer, size_t size);
 
    /**
     * Gets the size of the currently executing transaction.
@@ -97,7 +87,8 @@ extern "C" {
     * @brief Gets the size of the currently executing transaction.
     * @return size of the currently executing transaction
     */
-   WASM_IMPORT size_t transaction_size(void);
+   __attribute__((eosio_wasm_import))
+   size_t transaction_size();
 
    /**
     * Gets the block number used for TAPOS on the currently executing transaction.
@@ -109,7 +100,8 @@ extern "C" {
     * int tbn = tapos_block_num();
     * @endcode
     */
-   WASM_IMPORT int tapos_block_num(void);
+   __attribute__((eosio_wasm_import))
+   int tapos_block_num();
 
    /**
     * Gets the block prefix used for TAPOS on the currently executing transaction.
@@ -121,20 +113,22 @@ extern "C" {
     * int tbp = tapos_block_prefix();
     * @endcode
     */
-   WASM_IMPORT int tapos_block_prefix(void);
+   __attribute__((eosio_wasm_import))
+   int tapos_block_prefix();
 
    /**
     * Gets the expiration of the currently executing transaction.
     *
     * @brief Gets the expiration of the currently executing transaction.
-    * @return expiration of the currently executing transaction
+    * @return expiration of the currently executing transaction in seconds since Unix epoch
     * Example:
     * @code
-    * time tm = expiration();
+    * uint32_t tm = expiration();
     * eosio_print(tm);
     * @endcode
     */
-   WASM_IMPORT _time expiration(void);
+   __attribute__((eosio_wasm_import))
+   uint32_t expiration();
 
    /**
     * Retrieves the indicated action from the active transaction.
@@ -146,7 +140,8 @@ extern "C" {
     * @param size - amount of buff read, pass 0 to have size returned
     * @return the size of the action, -1 on failure
     */
-   WASM_IMPORT int get_action( uint32_t type, uint32_t index, char* buff, size_t size );
+   __attribute__((eosio_wasm_import))
+   int get_action( uint32_t type, uint32_t index, char* buff, size_t size );
 
    /**
     * Retrieve the signed_transaction.context_free_data[index].
@@ -157,12 +152,8 @@ extern "C" {
     * @param size - amount of context_free_data[index] to retrieve into buff, 0 to report required size
     * @return size copied, or context_free_data[index].size() if 0 passed for size, or -1 if index not valid
     */
-   WASM_IMPORT int get_context_free_data( uint32_t index, char* buff, size_t size );
+   __attribute__((eosio_wasm_import))
+   int get_context_free_data( uint32_t index, char* buff, size_t size );
 
-   ///@ } transactioncapi
-#ifdef __cplusplus
+   ///}@
 }
-#endif
-
-#endif//TRANSACTION_H
-

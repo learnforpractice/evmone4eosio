@@ -3,39 +3,15 @@
  *  @copyright defined in eos/LICENSE
  *  @brief Defines C API for interfacing with blockchain database
  */
-
+#pragma once
 #include <eosiolib/types.h>
 
-#ifndef DB_H
-#define DB_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#warning "<eosiolib/db.h> is deprecated use <eosio/db.h>. If you are using C++ the .h header files will be removed from inclusion entirely in v1.7.0"
 
 /**
- *  @defgroup database Database API
- *  @brief Defines APIs that store and retrieve data on the blockchain
- *  @ingroup contractdev
- *
- *  @defgroup databasecpp Database C++ API
- *  @brief Defines an interface to EOSIO database
- *  @ingroup database
- *
- *  @details
- *  EOSIO organizes data according to the following broad structure:
- *  - **code** - the account name which has write permission
- *     - **scope** - an area where the data is stored
- *        - **table** - a name for the table that is being stored
- *           - **record** - a row in the table
- */
-
-/**
- *  @defgroup databasec Database C API
+ *  @addtogroup database_c_api Database C API
+ *  @ingroup c_api
  *  @brief Defines %C APIs for interfacing with the database.
- *  @ingroup database
- *
  *  @details Database C API provides low level interface to EOSIO database.
  *
  *  @section tabletypes Supported Table Types
@@ -50,6 +26,8 @@ extern "C" {
  *    - long double key
  *  @{
  */
+extern "C" {
+
 
 /**
   *
@@ -67,10 +45,25 @@ extern "C" {
   *  @return iterator to the newly created table row
   *  @post a new entry is created in the table
   */
-WASM_IMPORT int32_t db_store_i64(account_name scope, table_name table, account_name payer, uint64_t id,  const void* data, uint32_t len);
-WASM_IMPORT int32_t db_store_i64_ex(account_name code, account_name scope, table_name table, account_name payer, uint64_t id,  const void* data, uint32_t len);
+__attribute__((eosio_wasm_import))
+int32_t db_store_i64(uint64_t scope, capi_name table, capi_name payer, uint64_t id,  const void* data, uint32_t len);
 
-WASM_IMPORT void db_update_i64(int32_t iterator, account_name payer, const void* data, uint32_t len);
+/**
+  *
+  *  Update a record in a primary 64-bit integer index table
+  *
+  *  @brief Update a record in a primary 64-bit integer index table
+  *  @param iterator - Iterator to the table row containing the record to update
+  *  @param payer - The account that pays for the storage costs (use 0 to continue using current payer)
+  *  @param data - New updated record
+  *  @param len - Size of data
+  *  @pre `data` is a valid pointer to a range of memory at least `len` bytes long
+  *  @pre `*((uint64_t*)data)` stores the primary key
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the record contained in the table row pointed to by `iterator` is replaced with the new updated record
+  */
+__attribute__((eosio_wasm_import))
+void db_update_i64(int32_t iterator, capi_name payer, const void* data, uint32_t len);
 
 /**
   *
@@ -84,12 +77,13 @@ WASM_IMPORT void db_update_i64(int32_t iterator, account_name payer, const void*
   *  Example:
   *
   *  @code
-  *  int32_t itr = db_find_i64(receiver, receiver, table1, N(alice));
+  *  int32_t itr = db_find_i64(receiver, receiver, table1, "alice"_n);
   *  eosio_assert(itr >= 0, "Alice cannot be removed since she was already not found in the table");
   *  db_remove_i64(itr);
   *  @endcode
   */
-WASM_IMPORT void db_remove_i64(int32_t iterator);
+__attribute__((eosio_wasm_import))
+void db_remove_i64(int32_t iterator);
 
 /**
   *
@@ -113,7 +107,8 @@ WASM_IMPORT void db_remove_i64(int32_t iterator);
   *  db_get_i64(itr, value, len);
   *  @endcode
   */
-WASM_IMPORT int32_t db_get_i64(int32_t iterator, void* data, uint32_t len);
+__attribute__((eosio_wasm_import))
+int32_t db_get_i64(int32_t iterator, const void* data, uint32_t len);
 
 /**
   *
@@ -129,14 +124,15 @@ WASM_IMPORT int32_t db_get_i64(int32_t iterator, void* data, uint32_t len);
   *  Example:
   *
   *  @code
-  *  int32_t charlie_itr = db_find_i64(receiver, receiver, table1, N(charlie));
+  *  int32_t charlie_itr = db_find_i64(receiver, receiver, table1, "charlie"_n);
   *  // expect nothing after charlie
   *  uint64_t prim = 0
   *  int32_t  end_itr = db_next_i64(charlie_itr, &prim);
   *  eosio_assert(end_itr < -1, "Charlie was not the last entry in the table");
   *  @endcode
   */
-WASM_IMPORT int32_t db_next_i64(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_next_i64(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -156,7 +152,8 @@ WASM_IMPORT int32_t db_next_i64(int32_t iterator, uint64_t* primary);
   *  int32_t  itr_prev = db_previous_i64(itr, &prim);
   *  @endcode
   */
-WASM_IMPORT int32_t db_previous_i64(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_previous_i64(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -172,10 +169,11 @@ WASM_IMPORT int32_t db_previous_i64(int32_t iterator, uint64_t* primary);
   *  Example:
   *
   *  @code
-  *  int itr = db_find_i64(receiver, receiver, table1, N(charlie));
+  *  int itr = db_find_i64(receiver, receiver, table1, "charlie"_n);
   *  @endcode
   */
-WASM_IMPORT int32_t db_find_i64(account_name code, account_name scope, table_name table, uint64_t id);
+__attribute__((eosio_wasm_import))
+int32_t db_find_i64(capi_name code, uint64_t scope, capi_name table, uint64_t id);
 
 /**
   *
@@ -189,7 +187,8 @@ WASM_IMPORT int32_t db_find_i64(account_name code, account_name scope, table_nam
   *  @param id - The primary key used to determine the lowerbound
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_lowerbound_i64(account_name code, account_name scope, table_name table, uint64_t id);
+__attribute__((eosio_wasm_import))
+int32_t db_lowerbound_i64(capi_name code, uint64_t scope, capi_name table, uint64_t id);
 
 /**
   *
@@ -203,7 +202,8 @@ WASM_IMPORT int32_t db_lowerbound_i64(account_name code, account_name scope, tab
   *  @param id - The primary key used to determine the upperbound
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_upperbound_i64(account_name code, account_name scope, table_name table, uint64_t id);
+__attribute__((eosio_wasm_import))
+int32_t db_upperbound_i64(capi_name code, uint64_t scope, capi_name table, uint64_t id);
 
 /**
   *
@@ -215,11 +215,8 @@ WASM_IMPORT int32_t db_upperbound_i64(account_name code, account_name scope, tab
   *  @param table - The table name
   *  @return end iterator of the table
   */
-WASM_IMPORT int32_t db_end_i64(account_name code, account_name scope, table_name table);
-
-//for ipc & rpc
-WASM_IMPORT void db_remove_i64_ex( uint64_t scope, uint64_t payer, uint64_t table, uint64_t id );
-WASM_IMPORT void db_update_i64_ex( uint64_t scope, uint64_t payer, uint64_t table, uint64_t id, const char* buffer, size_t buffer_size );
+__attribute__((eosio_wasm_import))
+int32_t db_end_i64(capi_name code, uint64_t scope, capi_name table);
 
 /**
   *
@@ -234,7 +231,8 @@ WASM_IMPORT void db_update_i64_ex( uint64_t scope, uint64_t payer, uint64_t tabl
   *  @return iterator to the newly created table row
   *  @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary 64-bit integer index table
   */
-WASM_IMPORT int32_t db_idx64_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint64_t* secondary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx64_store(uint64_t scope, capi_name table, capi_name payer, uint64_t id, const uint64_t* secondary);
 
 /**
   *
@@ -247,7 +245,8 @@ WASM_IMPORT int32_t db_idx64_store(account_name scope, table_name table, account
   *  @pre `iterator` points to an existing table row in the table
   *  @post the secondary key of the table row pointed to by `iterator` is replaced by `*secondary`
   */
-WASM_IMPORT void db_idx64_update(int32_t iterator, account_name payer, const uint64_t* secondary);
+__attribute__((eosio_wasm_import))
+void db_idx64_update(int32_t iterator, capi_name payer, const uint64_t* secondary);
 
 /**
   *
@@ -258,7 +257,8 @@ WASM_IMPORT void db_idx64_update(int32_t iterator, account_name payer, const uin
   *  @pre `iterator` points to an existing table row in the table
   *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
-WASM_IMPORT void db_idx64_remove(int32_t iterator);
+__attribute__((eosio_wasm_import))
+void db_idx64_remove(int32_t iterator);
 
 /**
   *
@@ -271,7 +271,8 @@ WASM_IMPORT void db_idx64_remove(int32_t iterator);
   *  @pre `iterator` points to an existing table row in the table
   *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx64_next(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx64_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -284,7 +285,8 @@ WASM_IMPORT int32_t db_idx64_next(int32_t iterator, uint64_t* primary);
   *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
   *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx64_previous(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx64_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -299,7 +301,8 @@ WASM_IMPORT int32_t db_idx64_previous(int32_t iterator, uint64_t* primary);
   *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
   *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx64_find_primary(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx64_find_primary(capi_name code, uint64_t scope, capi_name table, uint64_t* secondary, uint64_t primary);
 
 /**
   *
@@ -314,7 +317,8 @@ WASM_IMPORT int32_t db_idx64_find_primary(account_name code, account_name scope,
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx64_find_secondary(account_name code, account_name scope, table_name table, const uint64_t* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx64_find_secondary(capi_name code, uint64_t scope, capi_name table, const uint64_t* secondary, uint64_t* primary);
 
 /**
   *
@@ -331,7 +335,8 @@ WASM_IMPORT int32_t db_idx64_find_secondary(account_name code, account_name scop
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx64_lowerbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx64_lowerbound(capi_name code, uint64_t scope, capi_name table, uint64_t* secondary, uint64_t* primary);
 
 /**
   *
@@ -348,7 +353,8 @@ WASM_IMPORT int32_t db_idx64_lowerbound(account_name code, account_name scope, t
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx64_upperbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx64_upperbound(capi_name code, uint64_t scope, capi_name table, uint64_t* secondary, uint64_t* primary);
 
 /**
   *
@@ -360,7 +366,8 @@ WASM_IMPORT int32_t db_idx64_upperbound(account_name code, account_name scope, t
   *  @param table - The table name
   *  @return end iterator of the table
   */
-WASM_IMPORT int32_t db_idx64_end(account_name code, account_name scope, table_name table);
+__attribute__((eosio_wasm_import))
+int32_t db_idx64_end(capi_name code, uint64_t scope, capi_name table);
 
 
 
@@ -377,7 +384,8 @@ WASM_IMPORT int32_t db_idx64_end(account_name code, account_name scope, table_na
   *  @return iterator to the newly created table row
   *  @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary 128-bit integer index table
   */
-WASM_IMPORT int32_t db_idx128_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint128_t* secondary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx128_store(uint64_t scope, capi_name table, capi_name payer, uint64_t id, const uint128_t* secondary);
 
 /**
   *
@@ -390,7 +398,8 @@ WASM_IMPORT int32_t db_idx128_store(account_name scope, table_name table, accoun
   *  @pre `iterator` points to an existing table row in the table
   *  @post the secondary key of the table row pointed to by `iterator` is replaced by `*secondary`
   */
-WASM_IMPORT void db_idx128_update(int32_t iterator, account_name payer, const uint128_t* secondary);
+__attribute__((eosio_wasm_import))
+void db_idx128_update(int32_t iterator, capi_name payer, const uint128_t* secondary);
 
 /**
   *
@@ -401,7 +410,8 @@ WASM_IMPORT void db_idx128_update(int32_t iterator, account_name payer, const ui
   *  @pre `iterator` points to an existing table row in the table
   *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
-WASM_IMPORT void db_idx128_remove(int32_t iterator);
+__attribute__((eosio_wasm_import))
+void db_idx128_remove(int32_t iterator);
 
 /**
   *
@@ -414,7 +424,8 @@ WASM_IMPORT void db_idx128_remove(int32_t iterator);
   *  @pre `iterator` points to an existing table row in the table
   *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx128_next(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx128_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -427,7 +438,8 @@ WASM_IMPORT int32_t db_idx128_next(int32_t iterator, uint64_t* primary);
   *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
   *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx128_previous(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx128_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -442,7 +454,8 @@ WASM_IMPORT int32_t db_idx128_previous(int32_t iterator, uint64_t* primary);
   *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
   *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx128_find_primary(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx128_find_primary(capi_name code, uint64_t scope, capi_name table, uint128_t* secondary, uint64_t primary);
 
 /**
   *
@@ -457,7 +470,8 @@ WASM_IMPORT int32_t db_idx128_find_primary(account_name code, account_name scope
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx128_find_secondary(account_name code, account_name scope, table_name table, const uint128_t* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx128_find_secondary(capi_name code, uint64_t scope, capi_name table, const uint128_t* secondary, uint64_t* primary);
 
 /**
   *
@@ -474,7 +488,8 @@ WASM_IMPORT int32_t db_idx128_find_secondary(account_name code, account_name sco
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx128_lowerbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx128_lowerbound(capi_name code, uint64_t scope, capi_name table, uint128_t* secondary, uint64_t* primary);
 
 /**
   *
@@ -491,7 +506,8 @@ WASM_IMPORT int32_t db_idx128_lowerbound(account_name code, account_name scope, 
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx128_upperbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx128_upperbound(capi_name code, uint64_t scope, capi_name table, uint128_t* secondary, uint64_t* primary);
 
 /**
   *
@@ -503,7 +519,8 @@ WASM_IMPORT int32_t db_idx128_upperbound(account_name code, account_name scope, 
   *  @param table - The table name
   *  @return end iterator of the table
   */
-WASM_IMPORT int32_t db_idx128_end(account_name code, account_name scope, table_name table);
+__attribute__((eosio_wasm_import))
+int32_t db_idx128_end(capi_name code, uint64_t scope, capi_name table);
 
 /**
   *
@@ -519,7 +536,8 @@ WASM_IMPORT int32_t db_idx128_end(account_name code, account_name scope, table_n
   *  @return iterator to the newly created table row
   *  @post new secondary key association between primary key `id` and the specified secondary key is created in the secondary 256-bit index table
   */
-WASM_IMPORT int32_t db_idx256_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint128_t* data, uint32_t data_len );
+__attribute__((eosio_wasm_import))
+int32_t db_idx256_store(uint64_t scope, capi_name table, capi_name payer, uint64_t id, const uint128_t* data, uint32_t data_len );
 
 /**
   *
@@ -533,7 +551,8 @@ WASM_IMPORT int32_t db_idx256_store(account_name scope, table_name table, accoun
   *  @pre `iterator` points to an existing table row in the table
   *  @post the secondary key of the table row pointed to by `iterator` is replaced by the specified secondary key
   */
-WASM_IMPORT void db_idx256_update(int32_t iterator, account_name payer, const uint128_t* data, uint32_t data_len);
+__attribute__((eosio_wasm_import))
+void db_idx256_update(int32_t iterator, capi_name payer, const uint128_t* data, uint32_t data_len);
 
 /**
   *
@@ -544,7 +563,8 @@ WASM_IMPORT void db_idx256_update(int32_t iterator, account_name payer, const ui
   *  @pre `iterator` points to an existing table row in the table
   *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
-WASM_IMPORT void db_idx256_remove(int32_t iterator);
+__attribute__((eosio_wasm_import))
+void db_idx256_remove(int32_t iterator);
 
 /**
   *
@@ -557,7 +577,8 @@ WASM_IMPORT void db_idx256_remove(int32_t iterator);
   *  @pre `iterator` points to an existing table row in the table
   *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx256_next(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx256_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -570,7 +591,8 @@ WASM_IMPORT int32_t db_idx256_next(int32_t iterator, uint64_t* primary);
   *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
   *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx256_previous(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx256_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -586,7 +608,8 @@ WASM_IMPORT int32_t db_idx256_previous(int32_t iterator, uint64_t* primary);
   *  @post If and only if the table row is found, the buffer pointed to by `data` will be filled with the secondary key of the found table row
   *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx256_find_primary(account_name code, account_name scope, table_name table, uint128_t* data, uint32_t data_len, uint64_t primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx256_find_primary(capi_name code, uint64_t scope, capi_name table, uint128_t* data, uint32_t data_len, uint64_t primary);
 
 /**
   *
@@ -602,7 +625,8 @@ WASM_IMPORT int32_t db_idx256_find_primary(account_name code, account_name scope
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the first table row with a secondary key equal to the specified secondary key or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx256_find_secondary(account_name code, account_name scope, table_name table, const uint128_t* data, uint32_t data_len, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx256_find_secondary(capi_name code, uint64_t scope, capi_name table, const uint128_t* data, uint32_t data_len, uint64_t* primary);
 
 /**
   *
@@ -620,7 +644,8 @@ WASM_IMPORT int32_t db_idx256_find_secondary(account_name code, account_name sco
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx256_lowerbound(account_name code, account_name scope, table_name table, uint128_t* data, uint32_t data_len, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx256_lowerbound(capi_name code, uint64_t scope, capi_name table, uint128_t* data, uint32_t data_len, uint64_t* primary);
 
 /**
   *
@@ -638,7 +663,8 @@ WASM_IMPORT int32_t db_idx256_lowerbound(account_name code, account_name scope, 
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx256_upperbound(account_name code, account_name scope, table_name table, uint128_t* data, uint32_t data_len, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx256_upperbound(capi_name code, uint64_t scope, capi_name table, uint128_t* data, uint32_t data_len, uint64_t* primary);
 
 /**
   *
@@ -650,7 +676,8 @@ WASM_IMPORT int32_t db_idx256_upperbound(account_name code, account_name scope, 
   *  @param table - The table name
   *  @return end iterator of the table
   */
-WASM_IMPORT int32_t db_idx256_end(account_name code, account_name scope, table_name table);
+__attribute__((eosio_wasm_import))
+int32_t db_idx256_end(capi_name code, uint64_t scope, capi_name table);
 
 /**
   *
@@ -665,7 +692,8 @@ WASM_IMPORT int32_t db_idx256_end(account_name code, account_name scope, table_n
   *  @return iterator to the newly created table row
   *  @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary double-precision floating-point index table
   */
-WASM_IMPORT int32_t db_idx_double_store(account_name scope, table_name table, account_name payer, uint64_t id, const double* secondary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_double_store(uint64_t scope, capi_name table, capi_name payer, uint64_t id, const double* secondary);
 
 /**
   *
@@ -678,7 +706,8 @@ WASM_IMPORT int32_t db_idx_double_store(account_name scope, table_name table, ac
   *  @pre `iterator` points to an existing table row in the table
   *  @post the secondary key of the table row pointed to by `iterator` is replaced by `*secondary`
   */
-WASM_IMPORT void db_idx_double_update(int32_t iterator, account_name payer, const double* secondary);
+__attribute__((eosio_wasm_import))
+void db_idx_double_update(int32_t iterator, capi_name payer, const double* secondary);
 
 /**
   *
@@ -689,7 +718,8 @@ WASM_IMPORT void db_idx_double_update(int32_t iterator, account_name payer, cons
   *  @pre `iterator` points to an existing table row in the table
   *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
-WASM_IMPORT void db_idx_double_remove(int32_t iterator);
+__attribute__((eosio_wasm_import))
+void db_idx_double_remove(int32_t iterator);
 
 /**
   *
@@ -702,7 +732,8 @@ WASM_IMPORT void db_idx_double_remove(int32_t iterator);
   *  @pre `iterator` points to an existing table row in the table
   *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx_double_next(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_double_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -715,7 +746,8 @@ WASM_IMPORT int32_t db_idx_double_next(int32_t iterator, uint64_t* primary);
   *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
   *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx_double_previous(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_double_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -730,7 +762,8 @@ WASM_IMPORT int32_t db_idx_double_previous(int32_t iterator, uint64_t* primary);
   *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
   *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx_double_find_primary(account_name code, account_name scope, table_name table, double* secondary, uint64_t primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_double_find_primary(capi_name code, uint64_t scope, capi_name table, double* secondary, uint64_t primary);
 
 /**
   *
@@ -745,7 +778,8 @@ WASM_IMPORT int32_t db_idx_double_find_primary(account_name code, account_name s
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx_double_find_secondary(account_name code, account_name scope, table_name table, const double* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_double_find_secondary(capi_name code, uint64_t scope, capi_name table, const double* secondary, uint64_t* primary);
 
 /**
   *
@@ -762,7 +796,8 @@ WASM_IMPORT int32_t db_idx_double_find_secondary(account_name code, account_name
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx_double_lowerbound(account_name code, account_name scope, table_name table, double* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_double_lowerbound(capi_name code, uint64_t scope, capi_name table, double* secondary, uint64_t* primary);
 
 /**
   *
@@ -779,7 +814,8 @@ WASM_IMPORT int32_t db_idx_double_lowerbound(account_name code, account_name sco
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx_double_upperbound(account_name code, account_name scope, table_name table, double* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_double_upperbound(capi_name code, uint64_t scope, capi_name table, double* secondary, uint64_t* primary);
 
 /**
   *
@@ -791,7 +827,8 @@ WASM_IMPORT int32_t db_idx_double_upperbound(account_name code, account_name sco
   *  @param table - The table name
   *  @return end iterator of the table
   */
-WASM_IMPORT int32_t db_idx_double_end(account_name code, account_name scope, table_name table);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_double_end(capi_name code, uint64_t scope, capi_name table);
 
 /**
   *
@@ -806,7 +843,8 @@ WASM_IMPORT int32_t db_idx_double_end(account_name code, account_name scope, tab
   *  @return iterator to the newly created table row
   *  @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary quadruple-precision floating-point index table
   */
-WASM_IMPORT int32_t db_idx_long_double_store(account_name scope, table_name table, account_name payer, uint64_t id, const long double* secondary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_long_double_store(uint64_t scope, capi_name table, capi_name payer, uint64_t id, const long double* secondary);
 
 /**
   *
@@ -819,7 +857,8 @@ WASM_IMPORT int32_t db_idx_long_double_store(account_name scope, table_name tabl
   *  @pre `iterator` points to an existing table row in the table
   *  @post the secondary key of the table row pointed to by `iterator` is replaced by `*secondary`
   */
-WASM_IMPORT void db_idx_long_double_update(int32_t iterator, account_name payer, const long double* secondary);
+__attribute__((eosio_wasm_import))
+void db_idx_long_double_update(int32_t iterator, capi_name payer, const long double* secondary);
 
 /**
   *
@@ -830,7 +869,8 @@ WASM_IMPORT void db_idx_long_double_update(int32_t iterator, account_name payer,
   *  @pre `iterator` points to an existing table row in the table
   *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
-WASM_IMPORT void db_idx_long_double_remove(int32_t iterator);
+__attribute__((eosio_wasm_import))
+void db_idx_long_double_remove(int32_t iterator);
 
 /**
   *
@@ -843,7 +883,8 @@ WASM_IMPORT void db_idx_long_double_remove(int32_t iterator);
   *  @pre `iterator` points to an existing table row in the table
   *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx_long_double_next(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_long_double_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -856,7 +897,8 @@ WASM_IMPORT int32_t db_idx_long_double_next(int32_t iterator, uint64_t* primary)
   *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
   *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
-WASM_IMPORT int32_t db_idx_long_double_previous(int32_t iterator, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_long_double_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
@@ -871,7 +913,8 @@ WASM_IMPORT int32_t db_idx_long_double_previous(int32_t iterator, uint64_t* prim
   *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
   *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx_long_double_find_primary(account_name code, account_name scope, table_name table, long double* secondary, uint64_t primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_long_double_find_primary(capi_name code, uint64_t scope, capi_name table, long double* secondary, uint64_t primary);
 
 /**
   *
@@ -886,7 +929,8 @@ WASM_IMPORT int32_t db_idx_long_double_find_primary(account_name code, account_n
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx_long_double_find_secondary(account_name code, account_name scope, table_name table, const long double* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_long_double_find_secondary(capi_name code, uint64_t scope, capi_name table, const long double* secondary, uint64_t* primary);
 
 /**
   *
@@ -903,7 +947,8 @@ WASM_IMPORT int32_t db_idx_long_double_find_secondary(account_name code, account
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx_long_double_lowerbound(account_name code, account_name scope, table_name table, long double* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_long_double_lowerbound(capi_name code, uint64_t scope, capi_name table, long double* secondary, uint64_t* primary);
 
 /**
   *
@@ -920,7 +965,8 @@ WASM_IMPORT int32_t db_idx_long_double_lowerbound(account_name code, account_nam
   *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
   *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
-WASM_IMPORT int32_t db_idx_long_double_upperbound(account_name code, account_name scope, table_name table, long double* secondary, uint64_t* primary);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_long_double_upperbound(capi_name code, uint64_t scope, capi_name table, long double* secondary, uint64_t* primary);
 
 /**
   *
@@ -932,26 +978,8 @@ WASM_IMPORT int32_t db_idx_long_double_upperbound(account_name code, account_nam
   *  @param table - The table name
   *  @return end iterator of the table
   */
-WASM_IMPORT int32_t db_idx_long_double_end(account_name code, account_name scope, table_name table);
+__attribute__((eosio_wasm_import))
+int32_t db_idx_long_double_end(capi_name code, uint64_t scope, capi_name table);
 
-
-WASM_IMPORT int32_t db_store_i256( uint64_t scope, uint64_t table, uint64_t payer, void* id, int size, const char* buffer, size_t buffer_size );
-WASM_IMPORT void db_update_i256( int iterator, uint64_t payer, const char* buffer, size_t buffer_size );
-WASM_IMPORT void db_remove_i256( int iterator );
-WASM_IMPORT int32_t db_get_i256( int iterator, char* buffer, size_t buffer_size );
-WASM_IMPORT int32_t db_find_i256( uint64_t code, uint64_t scope, uint64_t table, void* id, size_t size );
-
-WASM_IMPORT int db_previous_i256( int itr, void* primary, size_t id_size );
-WASM_IMPORT int db_next_i256( int itr, void* primary, size_t id_size );
-
-WASM_IMPORT int db_lowerbound_i256( uint64_t code, uint64_t scope, uint64_t table, void* id, size_t id_size );
-WASM_IMPORT int db_upperbound_i256( uint64_t code, uint64_t scope, uint64_t table, void* id, size_t id_size );
-
-WASM_IMPORT uint32_t db_get_table_count(uint64_t code, uint64_t scope, uint64_t table);
-
-#ifdef __cplusplus
+///@}
 }
-#endif
-
-#endif //__DB_H_
-///@} databasec

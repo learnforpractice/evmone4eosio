@@ -2,35 +2,24 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
+#pragma once
 
-#include <eosiolib/types.h>
+#include "types.h"
 
-#ifndef CHAIN_H
-#define CHAIN_H
-
+#warning "<eosiolib/chain.h> is deprecated use <eosio/chain.h>. If you are using C++ the .h header files will be removed from inclusion entirely in v1.7.0"
 /**
- *  @defgroup chainapi Chain API
- *  @brief Defines API for querying internal chain state
- *  @ingroup contractdev
- */
-
-/**
- *  @defgroup chaincapi Chain C API
+ *  @addtogroup chain
+ *  @ingroup c_api
  *  @brief Defines %C API for querying internal chain state
- *  @ingroup chainapi
  *  @{
  */
 
-#ifdef __cplusplus
 extern "C" {
-#endif
-
     /**
      *  Gets the set of active producers.
-     *  @brief Gets the set of active producers.
      *
      *  @param producers - Pointer to a buffer of account names
-     *  @param datalen - Byte length of buffer, when passed 0 will return the size required to store full output. 
+     *  @param datalen - Byte length of buffer, when passed 0 will return the size required to store full output.
      *
      *  @return uint32_t - Number of bytes actually populated
      *  @pre `producers` is a pointer to a range of memory at least `datalen` bytes long
@@ -39,17 +28,12 @@ extern "C" {
      *  Example:
      *
      *  @code
-     *  account_name producers[21];
-     *  uint32_t bytes_populated = get_active_producers(producers, sizeof(account_name)*21);
+     *  capi_name producers[21];
+     *  uint32_t bytes_populated = get_active_producers(producers, sizeof(capi_name)*21);
      *  @endcode
      */
-
-    WASM_IMPORT uint32_t get_active_producers( account_name* producers, uint32_t datalen );
-
-   ///@ } chaincapi
-
-#ifdef __cplusplus
+   __attribute__((eosio_wasm_import))
+   uint32_t get_active_producers( capi_name* producers, uint32_t datalen );
 }
-#endif
 
-#endif //__CHAIN_H_
+/// @}

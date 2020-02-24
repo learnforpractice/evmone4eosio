@@ -2,41 +2,33 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
-#ifndef EOSIOLIB_CRYPTO_H_
-#define EOSIOLIB_CRYPTO_H_
+#pragma once
+#include "types.h"
 
-#include <eosiolib/types.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
+#warning "<eosiolib/crypto.h> is deprecated use <eosio/crypto.h>. If you are using C++ the .h header files will be removed from inclusion entirely in v1.7.0"
 
 /**
- *  @defgroup cryptoapi Chain API
- *  @brief Defines API for calculating and checking hash
- *  @ingroup contractdev
- */
-
-/**
- *  @defgroup cryptocapi Chain C API
+ *  @addtogroup crypto Crypto
  *  @brief Defines %C API for calculating and checking hash
- *  @ingroup chainapi
  *  @{
  */
 
+extern "C" {
+
 /**
  *  Tests if the sha256 hash generated from data matches the provided checksum.
- *  This method is optimized to a NO-OP when in fast evaluation mode.
- *  @brief Tests if the sha256 hash generated from data matches the provided checksum.
  *
  *  @param data - Data you want to hash
  *  @param length - Data length
- *  @param hash - `checksum256*` hash to compare to
+ *  @param hash - `capi_checksum256*` hash to compare to
  *
  *  @pre **assert256 hash** of `data` equals provided `hash` parameter.
  *  @post Executes next statement. If was not `true`, hard return.
  *
+ *  @note This method is optimized to a NO-OP when in fast evaluation mode.
+ *
  *  Example:
-*
+ *
  *  @code
  *  checksum hash;
  *  char data;
@@ -46,16 +38,16 @@ extern "C" {
  *  eosio::print("sha256 hash generated from data equals provided hash");
  *  @endcode
  */
-WASM_IMPORT void assert_sha256( const char* data, uint32_t length, const struct checksum256* hash );
+__attribute__((eosio_wasm_import))
+void assert_sha256( const char* data, uint32_t length, const capi_checksum256* hash );
 
 /**
  *  Tests if the sha1 hash generated from data matches the provided checksum.
- *  This method is optimized to a NO-OP when in fast evaluation mode.
- *  @brief Tests if the sha1 hash generated from data matches the provided checksum.
  *
+ *  @note This method is optimized to a NO-OP when in fast evaluation mode.
  *  @param data - Data you want to hash
  *  @param length - Data length
- *  @param hash - `checksum160*` hash to compare to
+ *  @param hash - `capi_checksum160*` hash to compare to
  *
  *  @pre **sha1 hash** of `data` equals provided `hash` parameter.
  *  @post Executes next statement. If was not `true`, hard return.
@@ -71,16 +63,16 @@ WASM_IMPORT void assert_sha256( const char* data, uint32_t length, const struct 
  *  eosio::print("sha1 hash generated from data equals provided hash");
  *  @endcode
  */
-WASM_IMPORT void assert_sha1( const char* data, uint32_t length, const struct checksum160* hash );
+__attribute__((eosio_wasm_import))
+void assert_sha1( const char* data, uint32_t length, const capi_checksum160* hash );
 
 /**
  *  Tests if the sha512 hash generated from data matches the provided checksum.
- *  This method is optimized to a NO-OP when in fast evaluation mode.
- *  @brief Tests if the sha512 hash generated from data matches the provided checksum.
  *
+ *  @note This method is optimized to a NO-OP when in fast evaluation mode.
  *  @param data - Data you want to hash
  *  @param length - Data length
- *  @param hash - `checksum512*` hash to compare to
+ *  @param hash - `capi_checksum512*` hash to compare to
  *
  *  @pre **assert512 hash** of `data` equals provided `hash` parameter.
  *  @post Executes next statement. If was not `true`, hard return.
@@ -96,15 +88,15 @@ WASM_IMPORT void assert_sha1( const char* data, uint32_t length, const struct ch
  *  eosio::print("sha512 hash generated from data equals provided hash");
  *  @endcode
  */
-WASM_IMPORT void assert_sha512( const char* data, uint32_t length, const struct checksum512* hash );
+__attribute__((eosio_wasm_import))
+void assert_sha512( const char* data, uint32_t length, const capi_checksum512* hash );
 
 /**
  *  Tests if the ripemod160 hash generated from data matches the provided checksum.
- *  @brief Tests if the ripemod160 hash generated from data matches the provided checksum.
  *
  *  @param data - Data you want to hash
  *  @param length - Data length
- *  @param hash - `checksum160*` hash to compare to
+ *  @param hash - `capi_checksum160*` hash to compare to
  *
  *  @pre **assert160 hash** of `data` equals provided `hash` parameter.
  *  @post Executes next statement. If was not `true`, hard return.
@@ -120,11 +112,11 @@ WASM_IMPORT void assert_sha512( const char* data, uint32_t length, const struct 
  *  eosio::print("ripemod160 hash generated from data equals provided hash");
  *  @endcode
  */
-WASM_IMPORT void assert_ripemd160( const char* data, uint32_t length, const struct checksum160* hash );
+__attribute__((eosio_wasm_import))
+void assert_ripemd160( const char* data, uint32_t length, const capi_checksum160* hash );
 
 /**
  *  Hashes `data` using `sha256` and stores result in memory pointed to by hash.
- *  @brief Hashes `data` using `sha256` and stores result in memory pointed to by hash.
  *
  *  @param data - Data you want to hash
  *  @param length - Data length
@@ -138,11 +130,11 @@ WASM_IMPORT void assert_ripemd160( const char* data, uint32_t length, const stru
  *  eos_assert( calc_hash == hash, "invalid hash" );
  *  @endcode
  */
-WASM_IMPORT void sha256( const char* data, uint32_t length, struct checksum256* hash );
+__attribute__((eosio_wasm_import))
+void sha256( const char* data, uint32_t length, capi_checksum256* hash );
 
 /**
  *  Hashes `data` using `sha1` and stores result in memory pointed to by hash.
- *  @brief Hashes `data` using `sha1` and stores result in memory pointed to by hash.
  *
  *  @param data - Data you want to hash
  *  @param length - Data length
@@ -156,11 +148,11 @@ WASM_IMPORT void sha256( const char* data, uint32_t length, struct checksum256* 
  *  eos_assert( calc_hash == hash, "invalid hash" );
  *  @endcode
  */
-WASM_IMPORT void sha1( const char* data, uint32_t length, struct checksum160* hash );
+__attribute__((eosio_wasm_import))
+void sha1( const char* data, uint32_t length, capi_checksum160* hash );
 
 /**
  *  Hashes `data` using `sha512` and stores result in memory pointed to by hash.
- *  @brief Hashes `data` using `sha512` and stores result in memory pointed to by hash.
  *
  *  @param data - Data you want to hash
  *  @param length - Data length
@@ -174,11 +166,11 @@ WASM_IMPORT void sha1( const char* data, uint32_t length, struct checksum160* ha
  *  eos_assert( calc_hash == hash, "invalid hash" );
  *  @endcode
  */
-WASM_IMPORT void sha512( const char* data, uint32_t length, struct checksum512* hash );
+__attribute__((eosio_wasm_import))
+void sha512( const char* data, uint32_t length, capi_checksum512* hash );
 
 /**
  *  Hashes `data` using `ripemod160` and stores result in memory pointed to by hash.
- *  @brief Hashes `data` using `ripemod160` and stores result in memory pointed to by hash.
  *
  *  @param data - Data you want to hash
  *  @param length - Data length
@@ -192,28 +184,29 @@ WASM_IMPORT void sha512( const char* data, uint32_t length, struct checksum512* 
  *  eos_assert( calc_hash == hash, "invalid hash" );
  *  @endcode
  */
-WASM_IMPORT void ripemd160( const char* data, uint32_t length, struct checksum160* hash );
+__attribute__((eosio_wasm_import))
+void ripemd160( const char* data, uint32_t length, capi_checksum160* hash );
 
 /**
  *  Calculates the public key used for a given signature and hash used to create a message.
- *  @brief Calculates the public key used for a given signature and hash used to create a message.
  *
  *  @param digest - Hash used to create a message
  *  @param sig - Signature
  *  @param siglen - Signature length
  *  @param pub - Public key
  *  @param publen - Public key length
+*   @return int - number of bytes written to pub
  *
  *  Example:
 *
  *  @code
  *  @endcode
  */
-WASM_IMPORT int recover_key( const struct checksum256* digest, const char* sig, size_t siglen, char* pub, size_t publen );
+__attribute__((eosio_wasm_import))
+int recover_key( const capi_checksum256* digest, const char* sig, size_t siglen, char* pub, size_t publen );
 
 /**
  *  Tests a given public key with the generated key from digest and the signature.
- *  @brief Tests a given public key with the generated key from digest and the signature.
  *
  *  @param digest - What the key will be generated from
  *  @param sig - Signature
@@ -237,15 +230,9 @@ WASM_IMPORT int recover_key( const struct checksum256* digest, const char* sig, 
  *  eosio::print("pub key matches the pub key generated from digest");
  *  @endcode
  */
-WASM_IMPORT void assert_recover_key( const struct checksum256* digest, const char* sig, size_t siglen, const char* pub, size_t publen );
+__attribute__((eosio_wasm_import))
+void assert_recover_key( const capi_checksum256* digest, const char* sig, size_t siglen, const char* pub, size_t publen );
 
-WASM_IMPORT int to_base58( const char *in, size_t size1, char *out, size_t size2 );
-WASM_IMPORT int from_base58( const char *in, size_t size1, char *out, size_t size2 );
+/// @}
 
-/// }@cryptocapi
-
-#ifdef __cplusplus
 }
-#endif
-
-#endif//EOSIOLIB_CRYPTO_H_

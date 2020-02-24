@@ -3,30 +3,31 @@
  *  @copyright defined in eos/LICENSE
  */
 #pragma once
-#include <eosiolib/action.h>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/serialize.hpp>
+#include <cstdlib>
+
+#include "action.h"
+#include "datastream.hpp"
+#include "serialize.hpp"
 
 #include <boost/preprocessor/variadic/size.hpp>
 #include <boost/preprocessor/variadic/to_tuple.hpp>
 #include <boost/preprocessor/tuple/enum.hpp>
 #include <boost/preprocessor/facilities/overload.hpp>
 
+#warning "<eosiolib/action.hpp> is deprecated use <eosio/action.hpp>"
+
 namespace eosio {
 
    /**
-    * @defgroup actioncppapi Action C++ API
-    * @ingroup actionapi
-    * @brief Defines type-safe C++ wrapers for querying action and sending action
+    *  @addtogroup action Action C++ API
+    *  @ingroup core
+    *  @brief Defines type-safe C++ wrapers for querying action and sending action
     *
-    * @note There are some methods from the @ref actioncapi that can be used directly from C++
-    *
-    * @{
+    *  @note There are some methods from the @ref action that can be used directly from C++
+    *  @{
     */
 
    /**
-    *
-    *  This method unpacks the current action at type T.
     *
     *  @brief Interpret the action body as type T.
     *  @return Unpacked action data casted as T.
@@ -44,23 +45,25 @@ namespace eosio {
     *  dummy_action msg = unpack_action_data<dummy_action>();
     *  @endcode
     */
+
    template<typename T>
    T unpack_action_data() {
       constexpr size_t max_stack_buffer_size = 512;
       size_t size = action_data_size();
-      const bool heap_allocation = max_stack_buffer_size < size;
-      char* buffer = (char*)( heap_allocation ? malloc(size) : alloca(size) );
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
       read_action_data( buffer, size );
-      auto res = unpack<T>( buffer, size );
-      // Free allocated memory 
-      if ( heap_allocation ) {
-         free(buffer);
-      }
-      return res;
+      return unpack<T>( buffer, size );
    }
 
-   using ::require_auth;
-   using ::require_recipient;
+   /**
+    *  Add the specified account to set of accounts to be notified
+    *
+    *  @brief Add the specified account to set of accounts to be notified
+    *  @param notify_account - name of the account to be verified
+    */
+   inline void require_recipient( name notify_account ){
+      ::require_recipient( notify_account.value );
+   }
 
    /**
     *  All of the listed accounts will be added to the set of accounts to be notified
@@ -71,19 +74,29 @@ namespace eosio {
     *  @note action.code is also considered as part of the set of notified accounts
     *
     *  @brief Notify an account for this action
-    *  @param name account to be notified
+    *  @param notify_account account to be notified
     *  @param remaining_accounts accounts to be notified
     *
     *  Example:
     *
     *  @code
-    *  require_recipient(N(Account1), N(Account2), N(Account3)); // throws exception if any of them not in set.
+    *  require_recipient("Account1"_n, "Account2"_n, "Account3"_n); // throws exception if any of them not in set.
     *  @endcode
     */
    template<typename... accounts>
-   void require_recipient( account_name name, accounts... remaining_accounts ){
-      require_recipient( name );
+   void require_recipient( name notify_account, accounts... remaining_accounts ){
+      ::require_recipient( notify_account.value );
       require_recipient( remaining_accounts... );
+   }
+
+   /**
+    *  Verifies that @ref name exists in the set of provided auths on a action. Fails if not found.
+    *
+    *  @brief Verify specified account exists in the set of provided auths
+    *  @param name - name of the account to be verified
+    */
+   inline void require_auth( name n ) {
+      ::require_auth( n.value );
    }
 
    /**
@@ -99,7 +112,7 @@ namespace eosio {
        * @param a - Name of the account who owns this authorization
        * @param p - Name of the permission
        */
-      permission_level( account_name a, permission_name p ):actor(a),permission(p){}
+      permission_level( name a, name p ):actor(a),permission(p){}
 
       /**
        * Default Constructor
@@ -113,13 +126,15 @@ namespace eosio {
        *
        * @brief Name of the account who owns this permission
        */
-      account_name    actor;
+      name    actor;
       /**
        * Name of the permission
        *
        * @brief Name of the permission
        */
-      permission_name permission;
+      name    permission;
+
+      /// @cond OPERATORS
 
       /**
        * Check equality of two permissions
@@ -130,9 +145,11 @@ namespace eosio {
        * @return true if equal
        * @return false if unequal
        */
-      friend bool operator == ( const permission_level& a, const permission_level& b ) {
+      friend constexpr bool operator == ( const permission_level& a, const permission_level& b ) {
          return std::tie( a.actor, a.permission ) == std::tie( b.actor, b.permission );
       }
+
+      /// @endcond
 
       EOSLIB_SERIALIZE( permission_level, (actor)(permission) )
    };
@@ -144,8 +161,28 @@ namespace eosio {
     *
     * @param level - Authorization to be required
     */
-   inline void require_auth(const permission_level& level) {
-      require_auth2( level.actor, level.permission );
+   inline void require_auth( const permission_level& level ) {
+      ::require_auth2( level.actor.value, level.permission.value );
+   }
+
+   /**
+    *  Verifies that @ref n has auth.
+    *
+    *  @brief Verifies that @ref n has auth.
+    *  @param n - name of the account to be verified
+    */
+   inline bool has_auth( name n ) {
+      return ::has_auth( n.value );
+   }
+
+   /**
+    *  Verifies that @ref n is an existing account.
+    *
+    *  @brief Verifies that @ref n is an existing account.
+    *  @param n - name of the account to check
+    */
+   inline bool is_account( name n ) {
+      return ::is_account( n.value );
    }
 
    /**
@@ -160,28 +197,28 @@ namespace eosio {
        *
        * @brief Name of the account the action is intended for
        */
-      account_name               account;
+      name                       account;
 
       /**
        * Name of the action
        *
        * @brief Name of the action
        */
-      action_name                name;
+      name                       name;
 
       /**
        * List of permissions that authorize this action
        *
        * @brief List of permissions that authorize this action
        */
-      vector<permission_level>   authorization;
+      std::vector<permission_level>   authorization;
 
       /**
        * Payload data
        *
        * @brief Payload data
        */
-      bytes                      data;
+      std::vector<char>               data;
 
       /**
        * Default Constructor
@@ -189,53 +226,6 @@ namespace eosio {
        * @brief Construct a new action object
        */
       action() = default;
-
-      /**
-       * Construct a new action object with the given permission and action struct
-       *
-       * @brief Construct a new action object with the given permission and action struct
-       * @tparam Action  - Type of action struct
-       * @param auth - The permission that authorizes this action
-       * @param value - The action struct that will be serialized via pack into data
-       */
-      template<typename Action>
-      action( vector<permission_level>&& auth, const Action& value ) {
-         account       = Action::get_account();
-         name          = Action::get_name();
-         authorization = move(auth);
-         data          = pack(value);
-      }
-
-      /**
-       * Construct a new action object with the given list of permissions and action struct
-       *
-       * @brief Construct a new action object with the given list of permissions and action struct
-       * @tparam Action  - Type of action struct
-       * @param auth - The list of permissions that authorizes this action
-       * @param value - The action struct that will be serialized via pack into data
-       */
-      template<typename Action>
-      action( const permission_level& auth, const Action& value )
-      :authorization(1,auth) {
-         account       = Action::get_account();
-         name          = Action::get_name();
-         data          = pack(value);
-      }
-
-
-      /**
-       * Construct a new action object with the given action struct
-       *
-       * @brief Construct a new action object with the given action struct
-       * @tparam Action  - Type of action struct
-       * @param value - The action struct that will be serialized via pack into data
-       */
-      template<typename Action>
-      action( const Action& value ) {
-         account       = Action::get_account();
-         name          = Action::get_name();
-         data          = pack(value);
-      }
 
       /**
        * Construct a new action object with the given action struct
@@ -248,7 +238,7 @@ namespace eosio {
        * @param value - The action struct that will be serialized via pack into data
        */
       template<typename T>
-      action( const permission_level& auth, account_name a, action_name n, T&& value )
+      action( const permission_level& auth, struct name a, struct name n, T&& value )
       :account(a), name(n), authorization(1,auth), data(pack(std::forward<T>(value))) {}
 
       /**
@@ -262,7 +252,7 @@ namespace eosio {
        * @param value - The action struct that will be serialized via pack into data
        */
       template<typename T>
-      action( vector<permission_level> auths, account_name a, action_name n, T&& value )
+      action( std::vector<permission_level> auths, struct name a, struct name n, T&& value )
       :account(a), name(n), authorization(std::move(auths)), data(pack(std::forward<T>(value))) {}
 
       EOSLIB_SERIALIZE( action, (account)(name)(authorization)(data) )
@@ -284,7 +274,7 @@ namespace eosio {
        * @pre This action should not contain any authorizations
        */
       void send_context_free() const {
-         eosio_assert( authorization.size() == 0, "context free actions cannot have authorizations");
+         eosio::check( authorization.size() == 0, "context free actions cannot have authorizations");
          auto serialize = pack(*this);
          ::send_context_free_inline(serialize.data(), serialize.size());
       }
@@ -298,62 +288,190 @@ namespace eosio {
        */
       template<typename T>
       T data_as() {
-         eosio_assert( name == T::get_name(), "Invalid name" );
-         eosio_assert( account == T::get_account(), "Invalid account" );
          return unpack<T>( &data[0], data.size() );
       }
 
    };
 
-   /**
-    * Base class to derive a new defined action from so it can take advantage of the dispatcher
-    *
-    * @brief Base class to derive a new defined action from
-    * @tparam Account - The account this action is intended for
-    * @tparam Name - The name of the action
-    */
-   template<uint64_t Account, uint64_t Name>
-   struct action_meta {
-      /**
-       * Get the account this action is intended for
-       *
-       * @brief Get the account this action is intended for
-       * @return uint64_t The account this action is intended for
-       */
-      static uint64_t get_account() { return Account; }
-      /**
-       * Get the name of this action
-       *
-       * @brief Get the name of this action
-       * @return uint64_t Name of the action
-       */
-      static uint64_t get_name()  { return Name; }
+   namespace detail {
+      template <typename T>
+      struct unwrap { typedef T type; };
+
+      template <typename T>
+      struct unwrap<ignore<T>> { typedef T type; };
+
+      template <typename R, typename Act, typename... Args>
+      auto get_args(R(Act::*p)(Args...)) {
+         return std::tuple<std::decay_t<typename unwrap<Args>::type>...>{};
+      }
+
+      template <typename R, typename Act, typename... Args>
+      auto get_args_nounwrap(R(Act::*p)(Args...)) {
+         return std::tuple<std::decay_t<Args>...>{};
+      }
+
+      template <auto Action>
+      using deduced = decltype(get_args(Action));
+
+      template <auto Action>
+      using deduced_nounwrap = decltype(get_args_nounwrap(Action));
+
+      template <typename T>
+      struct convert { typedef T type; };
+
+      template <>
+      struct convert<const char*> { typedef std::string type; };
+
+      template <>
+      struct convert<char*> { typedef std::string type; };
+
+      template <typename T, typename U>
+      struct is_same { static constexpr bool value = std::is_convertible<T,U>::value; };
+
+      template <typename U>
+      struct is_same<bool,U> { static constexpr bool value = std::is_integral<U>::value; };
+
+      template <typename T>
+      struct is_same<T,bool> { static constexpr bool value = std::is_integral<T>::value; };
+
+      template <size_t N, size_t I, auto Arg, auto... Args>
+      struct get_nth_impl { static constexpr auto value  = get_nth_impl<N,I+1,Args...>::value; };
+
+      template <size_t N, auto Arg, auto... Args>
+      struct get_nth_impl<N, N, Arg, Args...> { static constexpr auto value = Arg; };
+
+      template <size_t N, auto... Args>
+      struct get_nth { static constexpr auto value  = get_nth_impl<N,0,Args...>::value; };
+
+      template <auto Action, size_t I, typename T, typename... Rest>
+      struct check_types {
+         static_assert(detail::is_same<typename convert<T>::type, typename convert<typename std::tuple_element<I, deduced<Action>>::type>::type>::value);
+         using type = check_types<Action, I+1, Rest...>;
+         static constexpr bool value = true;
+      };
+      template <auto Action, size_t I, typename T>
+      struct check_types<Action, I, T> {
+         static_assert(detail::is_same<typename convert<T>::type, typename convert<typename std::tuple_element<I, deduced<Action>>::type>::type>::value);
+         static constexpr bool value = true;
+      };
+
+      template <auto Action, typename... Ts>
+      constexpr bool type_check() {
+         static_assert(sizeof...(Ts) == std::tuple_size<deduced<Action>>::value);
+         return check_types<Action, 0, Ts...>::value;
+      }
+   }
+
+   template <eosio::name::raw Name, auto Action>
+   struct action_wrapper {
+      template <typename Code>
+      constexpr action_wrapper(Code&& code, std::vector<eosio::permission_level>&& perms)
+         : code_name(std::forward<Code>(code)), permissions(std::move(perms)) {}
+
+      template <typename Code>
+      constexpr action_wrapper(Code&& code, const std::vector<eosio::permission_level>& perms)
+         : code_name(std::forward<Code>(code)), permissions(perms) {}
+
+      template <typename Code>
+      constexpr action_wrapper(Code&& code, eosio::permission_level&& perm)
+         : code_name(std::forward<Code>(code)), permissions({1, std::move(perm)}) {}
+
+      template <typename Code>
+      constexpr action_wrapper(Code&& code, const eosio::permission_level& perm)
+         : code_name(std::forward<Code>(code)), permissions({1, perm}) {}
+
+      static constexpr eosio::name action_name = eosio::name(Name);
+      eosio::name code_name;
+      std::vector<eosio::permission_level> permissions;
+
+      static constexpr auto get_mem_ptr() {
+         return Action;
+      }
+
+      template <typename... Args>
+      action to_action(Args&&... args)const {
+         static_assert(detail::type_check<Action, Args...>());
+         return action(permissions, code_name, action_name, detail::deduced<Action>{std::forward<Args>(args)...});
+      }
+      template <typename... Args>
+      void send(Args&&... args)const {
+         to_action(std::forward<Args>(args)...).send();
+      }
+
+      template <typename... Args>
+      void send_context_free(Args&&... args)const {
+         to_action(std::forward<Args>(args)...).send_context_free();
+      }
+
    };
 
-   ///@} actioncpp api
+   template <eosio::name::raw Name, auto... Actions>
+   struct variant_action_wrapper {
+      template <typename Code>
+      constexpr variant_action_wrapper(Code&& code, std::vector<eosio::permission_level>&& perms)
+         : code_name(std::forward<Code>(code)), permissions(std::move(perms)) {}
+
+      template <typename Code>
+      constexpr variant_action_wrapper(Code&& code, const std::vector<eosio::permission_level>& perms)
+         : code_name(std::forward<Code>(code)), permissions(perms) {}
+
+      template <typename Code>
+      constexpr variant_action_wrapper(Code&& code, eosio::permission_level&& perm)
+         : code_name(std::forward<Code>(code)), permissions({1, std::move(perm)}) {}
+
+      template <typename Code>
+      constexpr variant_action_wrapper(Code&& code, const eosio::permission_level& perm)
+         : code_name(std::forward<Code>(code)), permissions({1, perm}) {}
+
+      static constexpr eosio::name action_name = eosio::name(Name);
+      eosio::name code_name;
+      std::vector<eosio::permission_level> permissions;
+
+      template <size_t Variant>
+      static constexpr auto get_mem_ptr() {
+         return detail::get_nth<Variant, Actions...>::value;
+      }
+
+      template <size_t Variant, typename... Args>
+      action to_action(Args&&... args)const {
+         static_assert(detail::type_check<detail::get_nth<Variant, Actions...>::value, Args...>());
+         unsigned_int var = Variant;
+         return action(permissions, code_name, action_name, std::tuple_cat(std::make_tuple(var), detail::deduced<detail::get_nth<Variant, Actions...>::value>{std::forward<Args>(args)...}));
+      }
+
+
+      template <size_t Variant, typename... Args>
+      void send(Args&&... args)const {
+         to_action<Variant>(std::forward<Args>(args)...).send();
+      }
+
+      template <size_t Variant, typename... Args>
+      void send_context_free(Args&&... args) const {
+         to_action<Variant>(std::forward<Args>(args)...).send_context_free();
+      }
+
+   };
 
    template<typename... Args>
-   void dispatch_inline( account_name code, action_name act,
-                         vector<permission_level> perms,
+   void dispatch_inline( name code, name act,
+                         std::vector<permission_level> perms,
                          std::tuple<Args...> args ) {
       action( perms, code, act, std::move(args) ).send();
    }
 
-
-   template<typename, uint64_t>
+   template<typename, name::raw>
    struct inline_dispatcher;
 
 
-   template<typename T, uint64_t Name, typename... Args>
+   template<typename T, name::raw Name, typename... Args>
    struct inline_dispatcher<void(T::*)(Args...), Name> {
-      static void call(account_name code, const permission_level& perm, std::tuple<Args...> args) {
-         dispatch_inline(code, Name, vector<permission_level>(1, perm), std::move(args));
+      static void call(name code, const permission_level& perm, std::tuple<Args...> args) {
+         dispatch_inline(code, name(Name), std::vector<permission_level>(1, perm), std::move(args));
       }
-      static void call(account_name code, vector<permission_level> perms, std::tuple<Args...> args) {
-         dispatch_inline(code, Name, std::move(perms), std::move(args));
+      static void call(name code, std::vector<permission_level> perms, std::tuple<Args...> args) {
+         dispatch_inline(code, name(Name), std::move(perms), std::move(args));
       }
    };
-
 
 } // namespace eosio
 
@@ -361,13 +479,12 @@ namespace eosio {
 ::eosio::inline_dispatcher<decltype(&CONTRACT_CLASS::FUNCTION_NAME), ACTION_NAME>::call
 
 #define INLINE_ACTION_SENDER2( CONTRACT_CLASS, NAME )\
-INLINE_ACTION_SENDER3( CONTRACT_CLASS, NAME, ::eosio::string_to_name(#NAME) )
+INLINE_ACTION_SENDER3( CONTRACT_CLASS, NAME, ::eosio::name(#NAME) )
 
 #define INLINE_ACTION_SENDER(...) BOOST_PP_OVERLOAD(INLINE_ACTION_SENDER,__VA_ARGS__)(__VA_ARGS__)
 
 /**
- * @addtogroup actioncppapi
- * Additional documentation for group
+ * @addtogroup action
  * @{
  */
 
@@ -382,14 +499,5 @@ INLINE_ACTION_SENDER3( CONTRACT_CLASS, NAME, ::eosio::string_to_name(#NAME) )
 #define SEND_INLINE_ACTION( CONTRACT, NAME, ... )\
 INLINE_ACTION_SENDER(std::decay_t<decltype(CONTRACT)>, NAME)( (CONTRACT).get_self(),\
 BOOST_PP_TUPLE_ENUM(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), BOOST_PP_VARIADIC_TO_TUPLE(__VA_ARGS__)) );
-
-/**
- * Extend a new defined action with theaction meta, so it can work with the dispatcher
- *
- * @brief Extend a new defined action with the action meta
- * @param CODE - The account this action is intended for
- * @param NAME - The name of the action
- */
-#define ACTION( CODE, NAME ) struct NAME : ::eosio::action_meta<CODE, ::eosio::string_to_name(#NAME) >
 
    /// @}
