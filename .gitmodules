@@ -7,3 +7,6 @@
 [submodule "intx"]
 	path = intx
 	url = https://github.com/chfast/intx
+[submodule "ethereum_vm"]
+	path = ethereum_vm
+	url = https://github.com/learnforpractice/ethereum_vm
