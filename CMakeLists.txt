@@ -28,6 +28,8 @@ include(Hunter/init)
 project(evmone LANGUAGES CXX C)
 set(PROJECT_VERSION 0.4.0)
 
+if(EOSIOLIB_NATIVE)
+
 string(REGEX MATCH "([0-9]+)\\.([0-9]+)" _ ${PROJECT_VERSION})
 set(PROJECT_VERSION_MAJOR ${CMAKE_MATCH_1})
 set(PROJECT_VERSION_MINOR ${CMAKE_MATCH_2})
@@ -121,3 +123,24 @@ install(DIRECTORY ${include_dir}/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 cable_add_archive_package()
+
+endif()
+
+
+set(EOSIO_WASM_OLD_BEHAVIOR "Off")
+find_package(eosio.cdt REQUIRED)
+
+include(ExternalProject)
+
+message( STATUS "Building contracts in directory `eosio.contracts/contracts`" )
+ExternalProject_Add(
+   evmone4eosio_contracts_project
+   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/evmone
+   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/lib/evmone/contracts
+   CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${EOSIO_CDT_ROOT}/lib/cmake/eosio.cdt/EosioWasmToolchain.cmake
+   UPDATE_COMMAND ""
+   PATCH_COMMAND ""
+   TEST_COMMAND ""
+   INSTALL_COMMAND ""
+   BUILD_ALWAYS 1
+)
