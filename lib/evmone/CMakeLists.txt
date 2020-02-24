@@ -33,6 +33,7 @@ add_library(evmone SHARED
 target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE} ${ETH_ACCOUNT_NATIVE})
 target_include_directories(evmone PUBLIC
     ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/..
     ${CMAKE_SOURCE_DIR}/../secp256k1/src
     ${CMAKE_SOURCE_DIR}/../secp256k1
     ${CMAKE_SOURCE_DIR}/../secp256k1/include
