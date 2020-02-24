@@ -14,6 +14,7 @@ add_library(evmone SHARED
     analysis.cpp
     analysis.hpp
     evmone.cpp
+    evmone4eosio.cpp
     execution.cpp
     execution.hpp
     instructions.cpp
@@ -78,6 +79,7 @@ add_contract(evmone evmone
     analysis.cpp
     analysis.hpp
     evmone.cpp
+    evmone4eosio.cpp
     execution.cpp
     execution.hpp
     instructions.cpp
