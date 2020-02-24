@@ -13,7 +13,6 @@
 #include <ethash/keccak.hpp>
 
 #ifndef __WASM
-#include <vm_api/vm_api.h>
 #include "stacktrace.h"
 #endif
 
@@ -69,7 +68,7 @@ evmc_result execute(evmc_vm* /*unused*/, const evmc_host_interface* host, evmc_h
 #include <evmone/evmone.h>
 #include "../test/utils/utils.hpp"
 
-#include "../../../eEVM/include/eEVM/rlp.h"
+#include "eevm/rlp.h"
 #include <eosiolib/system.h>
 #include <eosiolib/crypto.h>
 #include <eosiolib/print.h>
