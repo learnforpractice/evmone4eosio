@@ -1,6 +1,6 @@
 [submodule "evmc"]
 	path = evmc
-	url = https://github.com/ethereum/evmc
+	url = https://github.com/learnforpractice/evmc
 [submodule "ethash"]
 	path = ethash
 	url = https://github.com/chfast/ethash
