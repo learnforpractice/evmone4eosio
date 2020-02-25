@@ -6,10 +6,6 @@
 #include "../test/utils/utils.hpp"
 
 #include "eevm/rlp.h"
-#include <eosiolib/system.h>
-#include <eosiolib/crypto.h>
-#include <eosiolib/print.h>
-#include <eosiolib/transaction.h>
 
 #include <eth_account.hpp>
 
@@ -20,23 +16,8 @@
 
 #include <ethash/keccak.hpp>
 
-#ifndef __WASM
-#include "stacktrace.h"
-#include <vm_api/vm_api.h>
-#endif
+#include <eosiolib_legacy/eosiolib.h>
 
-//#include <eEVM/util.h>
-
-#ifdef __WASM
-    #define EOSIO_ASSERT(a, b) \
-        eosio_assert(a, b);
-#else
-    #define EOSIO_ASSERT(a, b) \
-        if (!(a)) { \
-            print_stacktrace(); \
-        } \
-        eosio_assert(a, b);
-#endif
 
 //#define EVMC_VERSION EVMC_BYZANTIUM
 #define EVMC_VERSION EVMC_ISTANBUL
@@ -51,7 +32,7 @@ using namespace std::string_literals;
 using namespace std;
 using namespace evmc;
 
-uint256be to_big_endian(int64_t value) {
+uint256be to_uint256(int64_t value) {
     uint256be _value{};
 
     for (int i=0;i<8;i++) {
@@ -69,13 +50,27 @@ uint256be to_little_endian(int64_t value) {
     return _value;
 }
 
-uint256be to_big_endian(const uint8_t* data, int size) {
+uint256be to_uint256(const uint8_t* data, int size) {
     uint256be big_encoded{};
     EOSIO_ASSERT(size <=32, "size must <=32");
     for (int i=0;i<size;i++) {
         big_encoded.bytes[31-i] = data[i];
     }
     return big_encoded;
+}
+
+int64_t uint256_to_int64(const evmc_uint256be& value) {
+    auto _value = to_uint256(value.bytes, 32);
+    return *(int64_t*)_value.bytes;
+}
+
+uint256be to_balance(const uint8_t* data, int size) {
+    uint256be balance{};
+    EOSIO_ASSERT(size <=32, "size must <=32");
+    for (int i=0;i<size;i++) {
+        balance.bytes[i] = data[size-1-i];
+    }
+    return to_uint256(balance.bytes, 32);
 }
 
 struct EVMLog {
@@ -100,8 +95,8 @@ inline std::string to_hex(const uint8_t* data, int size)
 
 void evmc_transfer(const evmc_address& sender, const evmc_address& receiver, const evmc_uint256be& value) {
 
-//    auto _value = to_big_endian(value.bytes, 32);
-    int64_t amount = int64_t(intx::le::load<intx::uint256>(value.bytes));
+    int64_t amount = uint256_to_int64(value);
+
     EOSIO_ASSERT(amount <= max_amount && amount >= 0, "call:bad transfer value");
     if (amount == 0) {
         return;
@@ -197,6 +192,8 @@ struct evmc_tx_context
 };
 #endif
     explicit MyHost(const evmc_address& _origin) noexcept {
+        tx_context.block_difficulty = {};
+        tx_context.block_coinbase = {};
         tx_context.tx_origin = _origin;
         tx_context.block_number = tapos_block_num();
         tx_context.block_timestamp = current_time()/1000000;
@@ -257,7 +254,7 @@ struct evmc_tx_context
     /// @copydoc evmc_host_interface::get_balance
     virtual uint256be get_balance(const address& addr) const override {
         int64_t balance = eth_account_get_balance(ETH_ADDRESS(addr));
-        return to_big_endian(balance);
+        return to_uint256(balance);
     }
 
     /// @copydoc evmc_host_interface::get_code_size
@@ -319,21 +316,14 @@ struct evmc_tx_context
         static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
         static evmc_address ripemd160_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03};
         static evmc_address identity_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04};
-
-//        evmc_uint256be value = msg.value;
         evmc_transfer(msg.sender, msg.destination, msg.value);
-// {
-//     #ifndef __WASM
-//     auto hex = to_hex(msg.destination.bytes, 20);
-//     vmelog("+++++++%s\n", hex.c_str());
-//     #endif
-// }
+
         evmc_result res{};
         if (msg.destination == ecrecover_address) {
             EOSIO_ASSERT(msg.input_size == 128, "ecrecover: bad input size!");
             uint8_t _v[32];
             memcpy(_v, msg.input_data+32, 32);
-            auto __v = to_big_endian(msg.input_data+32, 32);
+            auto __v = to_uint256(msg.input_data+32, 32);
             memcpy(_v, __v.bytes, 32);
             intx::uint256 v = intx::le::load<intx::uint256>(_v);
 //            vmelog("+++++++++++v: %d\n", (int)v);
@@ -387,6 +377,7 @@ struct evmc_tx_context
                 append_logs(host);
                 return ret;
             } else {
+                res = evmc_make_result(EVMC_SUCCESS, 0, nullptr, 0);
                 return result(res);
             }
         }
@@ -417,7 +408,6 @@ struct evmc_tx_context
 
     /// @copydoc evmc_host_interface::get_block_hash
     virtual bytes32 get_block_hash(int64_t block_number) const override {
-        (void)block_number;
         return bytes32();
     }
 
@@ -610,8 +600,7 @@ void print_result(evmc_address& address, const uint8_t* output_data, uint32_t ou
 
 extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
     EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
-
-    auto rlp_result = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, uint256_t, rlp::ByteString, uint8_t, uint256_t, uint256_t>(raw_trx, raw_trx_size);
+    auto rlp_result = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, rlp::ByteString, rlp::ByteString, uint8_t, uint256_t, uint256_t>(raw_trx, raw_trx_size);
     // std::cout << (uint64_t)std::get<0>(rlp_result) << std::endl; //nonce
     // std::cout << (uint64_t)std::get<1>(rlp_result) << std::endl; //gas_price
     // std::cout << (uint64_t)std::get<2>(rlp_result) << std::endl; //gas_limit
@@ -624,7 +613,8 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
 //        std::cout << (uint64_t)std::get<3>(rlp_result) << std::endl; //to
     
     auto value = std::get<4>(rlp_result); //value
-    memcpy(msg.value.bytes, intx::as_bytes(value), 32);
+    //value is big endian encoded
+    msg.value = to_balance(value.data(), value.size());
 
     // std::cout << (uint64_t)std::get<5>(rlp_result) << std::endl; // data
     uint8_t v = std::get<6>(rlp_result); //v
@@ -739,7 +729,6 @@ struct evmc_result
 */
 
 #ifdef __WASM
-#include "eosiolib.h"
 
 extern "C" {
 
@@ -754,6 +743,7 @@ extern "C" {
 namespace std {
     bool uncaught_exception() noexcept {
         EOSIO_THROW("bad call of uncaught_exception!");
+        return true;
     }
 }
 #endif

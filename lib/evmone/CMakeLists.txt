@@ -20,6 +20,10 @@ add_library(evmone SHARED
     instructions.cpp
     limits.hpp
     opcodes_helpers.h
+
+    ${CMAKE_SOURCE_DIR}/ethereum_vm/eth_account.cpp
+    ${CMAKE_SOURCE_DIR}/ethereum_vm/eth_account.hpp
+
     ${CMAKE_SOURCE_DIR}/test/utils/utils.cpp
     ${CMAKE_SOURCE_DIR}/secp256k1/src/secp256k1.c
     ${CMAKE_SOURCE_DIR}/ethash/lib/ethash/ethash.cpp
@@ -31,22 +35,25 @@ add_library(evmone SHARED
     ${CMAKE_SOURCE_DIR}/ethash/lib/ethash/progpow.cpp
 )
 
-target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE} ${ETH_ACCOUNT_NATIVE})
+target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE})
 target_include_directories(evmone PUBLIC
     ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/include/eosiolib/contracts
+    ${CMAKE_SOURCE_DIR}/include/eosiolib/core
+    ${CMAKE_SOURCE_DIR}/include/eosiolib/capi
+    ${CMAKE_SOURCE_DIR}/ethereum_vm
     ${CMAKE_SOURCE_DIR}/secp256k1/src
     ${CMAKE_SOURCE_DIR}/secp256k1
     ${CMAKE_SOURCE_DIR}/secp256k1/include
     ${CMAKE_SOURCE_DIR}/ethash/include
-    ${EOSIO_SOURCE_DIR}/externals/aleth/evm4eos
-    ${EOSIOLIB_DIR}
+    # ${EOSIO_SOURCE_DIR}/externals/aleth/evm4eos
+    # ${EOSIOLIB_DIR}
     $<BUILD_INTERFACE:${include_dir}>$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 set(COMMON_COMPILE_FLAGS ENABLE_MODULE_RECOVERY ENABLE_MODULE_ECDH USE_ECMULT_STATIC_PRECOMPUTATION USE_FIELD_INV_BUILTIN USE_NUM_NONE USE_SCALAR_INV_BUILTIN)
 set(COMPILE_FLAGS USE_FIELD_5X52 USE_SCALAR_4X64 HAVE_BUILTIN_EXPECT HAVE___INT128)
-target_compile_definitions(evmone PRIVATE ${COMMON_COMPILE_FLAGS} ${COMPILE_FLAGS})
+target_compile_definitions(evmone PRIVATE -DEOSIO_NATIVE ${COMMON_COMPILE_FLAGS} ${COMPILE_FLAGS})
 
 set_target_properties(
     evmone
