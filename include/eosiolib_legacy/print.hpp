@@ -3,9 +3,9 @@
  *  @copyright defined in eos/LICENSE
  */
 #pragma once
-#include <eosiolib/print.h>
-#include <eosiolib/types.hpp>
-#include <eosiolib/fixed_key.hpp>
+#include <eosiolib_legacy/print.h>
+#include <eosiolib_legacy/types.hpp>
+#include <eosiolib_legacy/fixed_key.hpp>
 #include <utility>
 #include <string>
 

@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE
  */
 
-#include <eosiolib/types.h>
+#include <eosiolib_legacy/types.h>
 
 #ifndef CHAIN_H
 #define CHAIN_H

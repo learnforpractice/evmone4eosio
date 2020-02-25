@@ -1,6 +1,6 @@
 #pragma once
-#include <eosiolib/memory.hpp>
-#include <eosiolib/stdlib.hpp>
+#include <eosiolib_legacy/memory.hpp>
+#include <eosiolib_legacy/stdlib.hpp>
 #include <vector>
 
 namespace eosio {

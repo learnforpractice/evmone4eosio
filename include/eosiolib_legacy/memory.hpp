@@ -4,8 +4,8 @@
  */
 #pragma once
 
-#include <eosiolib/memory.h>
-#include <eosiolib/print.hpp>
+#include <eosiolib_legacy/memory.h>
+#include <eosiolib_legacy/print.hpp>
 
 void* sbrk(size_t num_bytes);
 

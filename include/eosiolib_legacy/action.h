@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
-#include <eosiolib/system.h>
+#include <eosiolib_legacy/system.h>
 
 #ifndef ACTION_H
 #define ACTION_H

@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE
  */
 
-#include <eosiolib/system.h>
+#include <eosiolib_legacy/system.h>
 
 #ifndef COMPILER_BUILTINS_H
 #define COMPILER_BUILTINS_H

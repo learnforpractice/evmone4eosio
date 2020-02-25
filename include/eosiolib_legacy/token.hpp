@@ -1,9 +1,9 @@
 #pragma once
-#include <eosiolib/asset.hpp>
-#include <eosiolib/eosio.hpp>
+#include <eosiolib_legacy/asset.hpp>
+#include <eosiolib_legacy/eosio.hpp>
 #include <string>
 
-#include <eosiolib/token.h>
+#include <eosiolib_legacy/token.h>
 
 using namespace std;
 

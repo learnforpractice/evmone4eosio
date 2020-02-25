@@ -1,6 +1,6 @@
 #pragma once 
-#include <eosiolib/varint.hpp>
-#include <eosiolib/serialize.hpp>
+#include <eosiolib_legacy/varint.hpp>
+#include <eosiolib_legacy/serialize.hpp>
 
 namespace eosio {
 

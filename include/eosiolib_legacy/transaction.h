@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
-#include <eosiolib/types.h>
+#include <eosiolib_legacy/types.h>
 
 #ifndef TRANSACTION_H
 #define TRANSACTION_H

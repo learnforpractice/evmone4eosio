@@ -1,7 +1,7 @@
 #ifndef EOSIOLIB_TOKEN_H_
 #define EOSIOLIB_TOKEN_H_
 
-#include <eosiolib/types.h>
+#include <eosiolib_legacy/types.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

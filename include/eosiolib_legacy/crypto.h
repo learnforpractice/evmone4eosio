@@ -5,7 +5,7 @@
 #ifndef EOSIOLIB_CRYPTO_H_
 #define EOSIOLIB_CRYPTO_H_
 
-#include <eosiolib/types.h>
+#include <eosiolib_legacy/types.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

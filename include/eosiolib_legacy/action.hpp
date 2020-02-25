@@ -3,9 +3,9 @@
  *  @copyright defined in eos/LICENSE
  */
 #pragma once
-#include <eosiolib/action.h>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/serialize.hpp>
+#include <eosiolib_legacy/action.h>
+#include <eosiolib_legacy/datastream.hpp>
+#include <eosiolib_legacy/serialize.hpp>
 
 #include <boost/preprocessor/variadic/size.hpp>
 #include <boost/preprocessor/variadic/to_tuple.hpp>

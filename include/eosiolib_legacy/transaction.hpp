@@ -3,11 +3,11 @@
  *  @copyright defined in eos/LICENSE
  */
 #pragma once
-#include <eosiolib/transaction.h>
-#include <eosiolib/action.hpp>
-#include <eosiolib/types.hpp>
-#include <eosiolib/time.hpp>
-#include <eosiolib/serialize.hpp>
+#include <eosiolib_legacy/transaction.h>
+#include <eosiolib_legacy/action.hpp>
+#include <eosiolib_legacy/types.hpp>
+#include <eosiolib_legacy/time.hpp>
+#include <eosiolib_legacy/serialize.hpp>
 #include <vector>
 
 namespace eosio {

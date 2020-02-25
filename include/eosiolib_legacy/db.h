@@ -4,7 +4,7 @@
  *  @brief Defines C API for interfacing with blockchain database
  */
 
-#include <eosiolib/types.h>
+#include <eosiolib_legacy/types.h>
 
 #ifndef DB_H
 #define DB_H
