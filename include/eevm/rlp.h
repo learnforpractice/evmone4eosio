@@ -25,6 +25,8 @@ using uint512_t = intx::uint512;
     else if (size > 32)
     {
       EOSIO_THROW("Calling from_big_endian with oversized array");
+      uint8_t tmp[32] = {};
+      return intx::be::load<uint256_t>(tmp);
     }
     else
     {
