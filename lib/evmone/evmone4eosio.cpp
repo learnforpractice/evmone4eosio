@@ -598,6 +598,10 @@ void print_result(evmc_address& address, const uint8_t* output_data, uint32_t ou
     printhex(output.data(), uint32_t(output.size()));
 }
 
+void check_chain_id(int32_t id) {
+    EOSIO_ASSERT(id == eth_get_chain_id(), "bad chain id");
+}
+
 extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
     EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
     auto rlp_result = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, rlp::ByteString, rlp::ByteString, uint8_t, uint256_t, uint256_t>(raw_trx, raw_trx_size);
@@ -606,7 +610,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     // std::cout << (uint64_t)std::get<2>(rlp_result) << std::endl; //gas_limit
 
     evmc_address new_address;
-
+    int32_t chain_id = 0;
     auto msg = evmc_message{};
     msg.gas = max_gas_limit;
 
@@ -623,7 +627,20 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
 
     if (r == 0 && s == 0) {
         memcpy(msg.sender.bytes, sender_address, 20);
+        chain_id = v;
+        check_chain_id(chain_id);
     } else {
+        if (v > 36) {
+            chain_id = (v - 35) / 2;
+        }
+        else if (v == 27 || v == 28) {
+            chain_id = -4;
+        }
+        else {
+            EOSIO_THROW("invalid signature!");
+        }
+        check_chain_id(chain_id);
+
         uint8_t sig[65];
         memcpy(sig, intx::as_bytes(r), 32);
         memcpy(sig+32, intx::as_bytes(s), 32);
