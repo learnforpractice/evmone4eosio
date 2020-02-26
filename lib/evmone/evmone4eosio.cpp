@@ -669,7 +669,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         }
     }
 
-    uint32_t nonce = 0;
+    uint64_t nonce = 0;
     bool ret = eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
     EOSIO_ASSERT(ret, "get_nonce: bad nonce");
     EOSIO_ASSERT(std::get<0>(decoded_trx) == nonce, "Invalid nonce");
@@ -725,7 +725,7 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
 
     evmc_transfer(msg.sender, msg.destination, msg.value);
 
-    uint32_t nonce = 0;
+    uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
     EOSIO_ASSERT(nonce >= 1, "on_call: bad nonce");
     eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
@@ -807,7 +807,7 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
 }
 
 result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address) {
-    uint32_t nonce = 0;
+    uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
     EOSIO_ASSERT(nonce >= 1, "on_create:bad nonce!");
 
