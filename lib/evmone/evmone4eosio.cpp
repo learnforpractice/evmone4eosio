@@ -609,11 +609,11 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     intx::uint256 _s = 0;
 
     if (r.size() == 32) {
-        _r = intx::be::unsafe::load<intx::uint256>(r.data());
+        _r = from_big_endian(r.data());
     }
 
     if (s.size() == 32) {
-        _s = intx::be::unsafe::load<intx::uint256>(s.data());
+        _s = from_big_endian(s.data());
     }
 
     if (_r == 0 && _s == 0) {
@@ -646,10 +646,10 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
             auto hash256  = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
             int pub_key_size = ::recover_key((checksum256*)hash256.bytes, (const char *)sign, 66, (char *)pub_key, 34);
             EOSIO_ASSERT(pub_key_size==34, "bad pub key size");
-            printhex(pub_key, 34);prints("\n");
+//            printhex(pub_key, 34);prints("\n");
             hash256 = ethash::keccak256(pub_key+1, 33);
             memcpy(msg.sender.bytes, hash256.bytes + 12, 20);
-            printhex(hash256.bytes, 32);prints("\n");
+//            printhex(hash256.bytes, 32);prints("\n");
             eth_account_check_address(*(eth_address*)&msg.sender);
         } else {//sign with eth private key
             check_chain_id(chain_id);
@@ -663,7 +663,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
             uint8_t hash[32];
             evm_recover_key(sig, 65, (uint8_t *)&hash256, 32, hash, 32);
             hash256 = ethash::keccak256(hash, 32);
-            printhex(&hash256, 32);
+//            printhex(&hash256, 32);
             memcpy(msg.sender.bytes, hash256.bytes + 12, 20);
             eth_account_check_address(*(eth_address*)&msg.sender);
         }
@@ -732,13 +732,8 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
 
     if (msg.destination == ecrecover_address) {
         EOSIO_ASSERT(msg.input_size == 128, "ecrecover: bad input size!");
-        uint8_t _v[32];
-        memcpy(_v, msg.input_data+32, 32);
-        auto __v = to_uint256(msg.input_data+32, 32);
-        memcpy(_v, __v.bytes, 32);
-        intx::uint256 v = intx::le::load<intx::uint256>(_v);
-//            vmelog("+++++++++++v: %d\n", (int)v);
-        if (v >= 27 && v <= 28) {
+        intx::uint256 v = from_big_endian(msg.input_data+32, 32);
+        if (v >= 27 && v <= 28) {//use ETH recover_key api
             /*
             hash: 256bit
             v: 256bit
@@ -754,6 +749,23 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
             signature[64] = uint8_t(v-27);
             evm_recover_key(signature, 65, hash_message, 32, public_key, 65);
             auto hash256 = ethash::keccak256(public_key+1, 64);
+
+            memset(hash, 0, 32);
+            memcpy(hash+12, (char*)&hash256 + 12, 20);
+            res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
+        } else {//use EOS recover_key api
+            uint8_t hash[32];
+            uint8_t sign[66];
+            const uint8_t *hashed_message = msg.input_data;
+
+            sign[0] = 0x00; //K1
+            sign[1] = uint8_t(v);
+            memcpy(sign+2, msg.input_data+64, 64);
+            uint8_t pub_key[34];
+            int pub_key_size = ::recover_key((checksum256*)hashed_message, (const char *)sign, 66, (char *)pub_key, 34);
+            EOSIO_ASSERT(pub_key_size==34, "bad pub key size");
+//            printhex(pub_key, 34);prints("\n");
+            auto hash256 = ethash::keccak256(pub_key+1, 33);
 
             memset(hash, 0, 32);
             memcpy(hash+12, (char*)&hash256 + 12, 20);
