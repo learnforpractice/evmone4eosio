@@ -11,6 +11,7 @@ message(STATUS +++++++++++++++++${CMAKE_SOURCE_DIR})
 
 add_library(evmone SHARED
     ${include_dir}/evmone/evmone.h
+    test.cpp
     analysis.cpp
     analysis.hpp
     evmone.cpp
@@ -20,7 +21,6 @@ add_library(evmone SHARED
     instructions.cpp
     limits.hpp
     opcodes_helpers.h
-
     ${CMAKE_SOURCE_DIR}/ethereum_vm/eth_account.cpp
     ${CMAKE_SOURCE_DIR}/ethereum_vm/eth_account.hpp
 
@@ -35,8 +35,7 @@ add_library(evmone SHARED
     ${CMAKE_SOURCE_DIR}/ethash/lib/ethash/progpow.cpp
 )
 
-target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE})
-target_include_directories(evmone PUBLIC
+set(INC_DIRS 
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include/eosiolib/contracts
     ${CMAKE_SOURCE_DIR}/include/eosiolib/core
@@ -50,6 +49,9 @@ target_include_directories(evmone PUBLIC
     # ${EOSIOLIB_DIR}
     $<BUILD_INTERFACE:${include_dir}>$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE})
+target_include_directories(evmone PUBLIC ${INC_DIRS})
 
 set(COMMON_COMPILE_FLAGS ENABLE_MODULE_RECOVERY ENABLE_MODULE_ECDH USE_ECMULT_STATIC_PRECOMPUTATION USE_FIELD_INV_BUILTIN USE_NUM_NONE USE_SCALAR_INV_BUILTIN)
 set(COMPILE_FLAGS USE_FIELD_5X52 USE_SCALAR_4X64 HAVE_BUILTIN_EXPECT HAVE___INT128)
@@ -71,6 +73,16 @@ set_source_files_properties(evmone.cpp PROPERTIES COMPILE_DEFINITIONS PROJECT_VE
 
 add_standalone_library(evmone)
 
+# add_executable(evmone_test test.cpp
+#     ${CMAKE_SOURCE_DIR}/ethereum_vm/eth_account.cpp
+#     ${CMAKE_SOURCE_DIR}/ethereum_vm/eth_account.hpp
+# )
+
+# target_include_directories(evmone_test PUBLIC ${INC_DIRS})
+
+# target_link_libraries(evmone_test PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE})
+# target_include_directories(evmone_test PUBLIC ${INC_DIRS})
+# target_compile_definitions(evmone_test PRIVATE -DEOSIO_NATIVE ${COMMON_COMPILE_FLAGS} ${COMPILE_FLAGS})
 
 else()
 
