@@ -711,9 +711,10 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     uint32_t nonce = 0;
     bool ret = eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
     EOSIO_ASSERT(ret, "get_nonce: bad nonce");
+    EOSIO_ASSERT(std::get<3>(decoded_trx) == nonce, "Invalid nonce");
 
     auto address = std::get<3>(decoded_trx);
-    if (address.size() == 0) {
+    if (address.size() == 0) {//receiver addres is empty, it's a Creation transaction
         msg.kind = EVMC_CREATE;
         rlp::ByteString addr;
         addr.resize(20);
@@ -734,6 +735,8 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     //vmelog("+++++++++++++++msg.kind %d\n", msg.kind);
     auto data = std::get<5>(decoded_trx);
 
+    eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
+
     evmc_transfer(msg.sender, msg.destination, msg.value);
     if (msg.kind == EVMC_CREATE) {
         // msg.input_data = data.data();
@@ -745,7 +748,6 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
         if (res.status_code != EVMC_SUCCESS) {
             EOSIO_THROW(get_status_error(res.status_code));
         }
-        eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
         vector<uint8_t> code(res.output_data, res.output_data + res.output_size);
         eth_account_set_code(*(eth_address*)&new_address, code);
     } else if (msg.kind == EVMC_CALL) {
@@ -762,7 +764,6 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
             if (res.status_code != EVMC_SUCCESS) {
                 EOSIO_THROW(get_status_error(res.status_code));
             }
-            eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
             //vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);
         } else {
             rlp::ByteString bs, output;
