@@ -2,7 +2,7 @@
 # Copyright 2019 Pawel Bylica.
 # Licensed under the Apache License, Version 2.0.
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.10)
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/evmc/.git)
     message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
