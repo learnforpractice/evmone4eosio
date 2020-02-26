@@ -711,7 +711,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     uint32_t nonce = 0;
     bool ret = eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
     EOSIO_ASSERT(ret, "get_nonce: bad nonce");
-    EOSIO_ASSERT(std::get<3>(decoded_trx) == nonce, "Invalid nonce");
+    EOSIO_ASSERT(std::get<0>(decoded_trx) == nonce, "Invalid nonce");
 
     auto address = std::get<3>(decoded_trx);
     if (address.size() == 0) {//receiver addres is empty, it's a Creation transaction
