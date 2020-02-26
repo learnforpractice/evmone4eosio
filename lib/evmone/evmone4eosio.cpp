@@ -36,6 +36,9 @@ constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
 evmc_address EmptyAddress{};
 
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size);
+
+void print_result(evmc_address& address, const uint8_t* output_data, size_t output_size, vector<evm_log>& logs);
+result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address);
 result on_call(const evmc_message& msg, vector<evm_log>& logs);
 
 uint256be to_uint256(int64_t value) {
@@ -339,11 +342,28 @@ enum evmc_call_kind
 #endif
     /// @copydoc evmc_host_interface::call
     virtual result call(const evmc_message& msg) override {
-        evmc_transfer(msg.sender, msg.destination, msg.value);
         vector<evm_log> _logs;
-        auto res = on_call(msg, _logs);
-        append_logs(_logs);
-        return res;
+
+        if (msg.kind == EVMC_CREATE) {
+            evmc_address new_address;
+            result res = on_create(msg, msg.input_data, (uint32_t)msg.input_size, _logs, new_address);
+            if (res.status_code != EVMC_SUCCESS) {
+                EOSIO_THROW(get_status_error(res.status_code));
+            }
+            append_logs(_logs);
+            return res;
+        } else if (msg.kind == EVMC_CALL || msg.kind == EVMC_DELEGATECALL) {
+            auto res = on_call(msg, _logs);
+            if (res.status_code != EVMC_SUCCESS) {
+                EOSIO_THROW(get_status_error(res.status_code));
+            }
+            append_logs(_logs);
+            return res;
+        } else {
+            EOSIO_THROW("bad call kind");
+            auto res = evmc_make_result(EVMC_SUCCESS, 0, nullptr, 0);
+            return result(res);
+        }
     }
 
     /// @copydoc evmc_host_interface::get_tx_context
@@ -565,7 +585,6 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     // std::cout << (uint64_t)std::get<1>(decoded_trx) << std::endl; //gas_price
     // std::cout << (uint64_t)std::get<2>(decoded_trx) << std::endl; //gas_limit
 
-    evmc_address new_address;
     int32_t chain_id = 0;
     auto msg = evmc_message{};
     msg.gas = max_gas_limit;
@@ -658,40 +677,25 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     auto address = std::get<3>(decoded_trx);
     if (address.size() == 0) {//receiver addres is empty, it's a Creation transaction
         msg.kind = EVMC_CREATE;
-        rlp::ByteString addr;
-        addr.resize(20);
-        memcpy(addr.data(), msg.sender.bytes, 20);
-        auto res = rlp::encode(addr, nonce);
-        auto hash = ethash::keccak256(res.data(), res.size());
-        memcpy(new_address.bytes, (char*)&hash+12, 20);
-
-        uint64_t creator = eth_account_find_creator_by_address(*(eth_address *)&msg.sender);
-        eth_account_create(*(eth_address *)&new_address, creator);
-        msg.destination = new_address;
     } else {
+        msg.kind = EVMC_CALL;
         EOSIO_ASSERT(address.size() == 20, "bad destination address");
         eth_account_check_address(*(eth_address*)address.data());
-        msg.kind = EVMC_CALL;
         memcpy(msg.destination.bytes, address.data(), 20);
     }
     //vmelog("+++++++++++++++msg.kind %d\n", msg.kind);
     auto data = std::get<5>(decoded_trx);
 
-    eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
-
-    evmc_transfer(msg.sender, msg.destination, msg.value);
     if (msg.kind == EVMC_CREATE) {
         // msg.input_data = data.data();
         // msg.input_size = data.size();
-        auto host = MyHost(msg.sender);
-        auto evm = evmc::VM{evmc_create_evmone()};
-        auto res = evm.execute(host, EVMC_VERSION, msg, data.data(), data.size());
-        print_result(msg.destination, res.output_data, res.output_size, host.get_logs());
+        vector<evm_log> logs;
+        evmc_address new_address;
+        result res = on_create(msg, data.data(), (uint32_t)data.size(), logs, new_address);
+        print_result(new_address, res.output_data, res.output_size, logs);
         if (res.status_code != EVMC_SUCCESS) {
             EOSIO_THROW(get_status_error(res.status_code));
         }
-        vector<uint8_t> code(res.output_data, res.output_data + res.output_size);
-        eth_account_set_code(*(eth_address*)&new_address, code);
     } else if (msg.kind == EVMC_CALL) {
         msg.input_data = data.data();
         msg.input_size = data.size();
@@ -718,6 +722,14 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
     static evmc_address identity_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04};
 //DELEGATECALL
     evmc_result res{};
+
+    evmc_transfer(msg.sender, msg.destination, msg.value);
+
+    uint32_t nonce = 0;
+    eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
+    EOSIO_ASSERT(nonce >= 1, "on_call: bad nonce");
+    eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
+
     if (msg.destination == ecrecover_address) {
         EOSIO_ASSERT(msg.input_size == 128, "ecrecover: bad input size!");
         uint8_t _v[32];
@@ -780,6 +792,41 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
             return result(res);
         }
     }
+}
+
+result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address) {
+    uint32_t nonce = 0;
+    eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
+    EOSIO_ASSERT(nonce >= 1, "on_create:bad nonce!");
+
+    rlp::ByteString addr;
+    addr.resize(20);
+    memcpy(addr.data(), msg.sender.bytes, 20);
+    auto encoded = rlp::encode(addr, nonce);
+    auto hash = ethash::keccak256(encoded.data(), encoded.size());
+    memcpy(new_address.bytes, (char*)&hash+12, 20);
+
+    nonce += 1;
+    eth_account_set_nonce(*(eth_address *)&msg.sender, nonce);
+
+    uint64_t creator = eth_account_find_creator_by_address(*(eth_address *)&msg.sender);
+    eth_account_create(*(eth_address *)&new_address, creator);
+
+    evmc_transfer(msg.sender, msg.destination, msg.value);
+
+    evmc_message msg_creation = msg;
+    msg_creation.destination = new_address;
+
+    auto host = MyHost(msg.sender);
+    auto evm = evmc::VM{evmc_create_evmone()};
+    auto res = evm.execute(host, EVMC_VERSION, msg_creation, code, code_size);
+    if (res.status_code != EVMC_SUCCESS) {
+        EOSIO_THROW(get_status_error(res.status_code));
+    }
+    vector<uint8_t> _code(res.output_data, res.output_data + res.output_size);
+    eth_account_set_code(*(eth_address*)&new_address, _code);
+    logs = host.get_logs();
+    return res;
 }
 
 /*
