@@ -18,6 +18,16 @@
 
 #include <eosiolib_legacy/eosiolib.h>
 
+using namespace eevm;
+using namespace std::string_literals;
+using namespace std;
+using namespace evmc;
+
+struct evm_log {
+    address addr;
+    vector<uint8_t> data;
+    vector<bytes32> topics;
+};
 
 //#define EVMC_VERSION EVMC_BYZANTIUM
 #define EVMC_VERSION EVMC_ISTANBUL
@@ -26,12 +36,7 @@ constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
 evmc_address EmptyAddress{};
 
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size);
-result on_call(evmc_message& msg, vector<EVMLog>& logs);
-
-using namespace eevm;
-using namespace std::string_literals;
-using namespace std;
-using namespace evmc;
+result on_call(const evmc_message& msg, vector<evm_log>& logs);
 
 uint256be to_uint256(int64_t value) {
     uint256be _value{};
@@ -65,36 +70,30 @@ int64_t uint256_to_int64(const evmc_uint256be& value) {
     return *(int64_t*)_value.bytes;
 }
 
-uint32_t big_endian_to_uint32(const uint8_t* data, int size) {
+uint32_t big_endian_to_uint32(const uint8_t* data, uint32_t size) {
     EOSIO_ASSERT(size <= 4, "bad size");
     uint32_t value;
-    for (int i=0;i<size;i++) {
+    for (uint32_t i=0;i<size;i++) {
         ((uint8_t*)&value)[i] = data[size-1-i];
     }
     return value;
 }
 
-uint256be to_balance(const uint8_t* data, int size) {
+uint256be to_balance(const uint8_t* data, uint32_t size) {
     uint256be balance{};
     EOSIO_ASSERT(size <=32, "size must <=32");
-    for (int i=0;i<size;i++) {
+    for (uint32_t i=0;i<size;i++) {
         balance.bytes[i] = data[size-1-i];
     }
     return to_uint256(balance.bytes, 32);
 }
 
-struct EVMLog {
-    address addr;
-    vector<uint8_t> data;
-    vector<bytes32> topics;
-};
-
-inline std::string to_hex(const uint8_t* data, int size)
+inline std::string to_hex(const uint8_t* data, uint32_t size)
 {
     static const auto hex_chars = "0123456789abcdef";
     std::string str;
     str.reserve(size * 2);
-    for (int i=0;i<size;i++)
+    for (uint32_t i=0;i<size;i++)
     {
         uint8_t b = data[i];
         str.push_back(hex_chars[uint8_t(b) >> 4]);
@@ -103,7 +102,7 @@ inline std::string to_hex(const uint8_t* data, int size)
     return str;
 }
 
-void print_hex(const uint8_t* data, int size) {
+void print_hex(const uint8_t* data, uint32_t size) {
     auto hex = to_hex(data, size);
     vmelog("%s\n", hex.c_str());
 }
@@ -185,7 +184,7 @@ class MyHost : public evmc::Host {
     evmc_tx_context tx_context{};
 
 protected:
-    vector<EVMLog> logs;
+    vector<evm_log> logs;
 
     // explicit ExampleHost(evmc_tx_context& _tx_context) noexcept : tx_context{_tx_context} {};
     // ExampleHost(evmc_tx_context& _tx_context, evmc::accounts& _accounts) noexcept
@@ -217,13 +216,13 @@ struct evmc_tx_context
         tx_context.chain_id = to_little_endian(id);
     }
 
-    virtual void append_logs(MyHost& host) {
-        for (auto& log: host.logs) {
+    virtual void append_logs(vector<evm_log>& _logs) {
+        for (auto& log: _logs) {
             logs.emplace_back(log);
         }
     }
 
-    virtual vector<EVMLog>& get_logs() {
+    virtual vector<evm_log>& get_logs() {
         return logs;
     }
 
@@ -340,75 +339,11 @@ enum evmc_call_kind
 #endif
     /// @copydoc evmc_host_interface::call
     virtual result call(const evmc_message& msg) override {
-        static evmc_address ecrecover_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
-        static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
-        static evmc_address ripemd160_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03};
-        static evmc_address identity_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04};
         evmc_transfer(msg.sender, msg.destination, msg.value);
-//DELEGATECALL
-        evmc_result res{};
-        if (msg.destination == ecrecover_address) {
-            EOSIO_ASSERT(msg.input_size == 128, "ecrecover: bad input size!");
-            uint8_t _v[32];
-            memcpy(_v, msg.input_data+32, 32);
-            auto __v = to_uint256(msg.input_data+32, 32);
-            memcpy(_v, __v.bytes, 32);
-            intx::uint256 v = intx::le::load<intx::uint256>(_v);
-//            vmelog("+++++++++++v: %d\n", (int)v);
-            if (v >= 27 && v <= 28) {
-                /*
-                hash: 256bit
-                v: 256bit
-                r: 256bit
-                s: 256bit
-                */
-                uint8_t hash[32];
-                uint8_t public_key[65];
-                uint8_t signature[65];
-                const uint8_t *hash_message = msg.input_data;
-                memset(public_key, 0, 65);
-                memcpy(signature, msg.input_data+64, 64);
-                signature[64] = uint8_t(v-27);
-                evm_recover_key(signature, 65, hash_message, 32, public_key, 65);
-                auto hash256 = ethash::keccak256(public_key+1, 64);
-
-                memset(hash, 0, 32);
-                memcpy(hash+12, (char*)&hash256 + 12, 20);
-                res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
-            }
-            // bytes32 *r = (bytes32*)msg.input_data + 2;
-            // bytes32 *s = (bytes32*)msg.input_data + 3;
-            return result(res);
-        } else if (msg.destination == sha256_address) {
-            struct checksum256 hash{};
-            sha256((char *)msg.input_data, msg.input_size, &hash);
-            //vmelog("++++++++++call sha256, input: %s\n", msg.input_data);
-            res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
-            return result(res);
-        } else if (msg.destination == ripemd160_address) {
-            uint8_t hash[32];
-            memset(hash, 0, 32);
-            ripemd160((char *)msg.input_data, msg.input_size, (struct checksum160*)&hash[12]);
-            res = evmc_make_result(EVMC_SUCCESS, 0, hash, 32);
-            return result(res);
-        } else if (msg.destination == identity_address) {
-            res = evmc_make_result(EVMC_SUCCESS, 0, msg.input_data, msg.input_size);
-            return result(res);
-        } else {
-            vector<uint8_t> code;
-            eth_account_get_code(*(eth_address*)&msg.destination, code);
-            if (code.size()) {
-                auto host = MyHost(msg.sender);
-                auto evm = evmc::VM{evmc_create_evmone()};
-                auto ret = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
-                //vmelog("++++++++gas left %d\n", ret.gas_left);
-                append_logs(host);
-                return ret;
-            } else {
-                res = evmc_make_result(EVMC_SUCCESS, 0, nullptr, 0);
-                return result(res);
-            }
-        }
+        vector<evm_log> _logs;
+        auto res = on_call(msg, _logs);
+        append_logs(_logs);
+        return res;
     }
 
     /// @copydoc evmc_host_interface::get_tx_context
@@ -436,6 +371,7 @@ enum evmc_call_kind
 
     /// @copydoc evmc_host_interface::get_block_hash
     virtual bytes32 get_block_hash(int64_t block_number) const override {
+        (void)block_number;
         return bytes32();
     }
 
@@ -445,7 +381,7 @@ enum evmc_call_kind
                           size_t data_size,
                           const bytes32 topics[],
                           size_t num_topics) override {
-        EVMLog log;
+        evm_log log;
         log.addr = addr;
         log.data.resize(data_size);
         memcpy(log.data.data(), data, data_size);
@@ -538,7 +474,7 @@ struct evmc_message
 #endif
 
 /*
-struct EVMLog {
+struct evm_log {
     address addr;
     vector<uint8_t> data;
     vector<bytes32> topics;
@@ -558,7 +494,7 @@ rlp::ByteString encode_topics(vector<bytes32>& topics) {
     return output;
 }
 
-rlp::ByteString encode_log(EVMLog& log) {
+rlp::ByteString encode_log(evm_log& log) {
     rlp::ByteString bs, output;
 
     bs = rlp::ByteString(log.addr.bytes, log.addr.bytes + 20);
@@ -576,7 +512,7 @@ rlp::ByteString encode_log(EVMLog& log) {
     return output;
 }
 
-rlp::ByteString encode_logs(vector<EVMLog>& logs) {
+rlp::ByteString encode_logs(vector<evm_log>& logs) {
     rlp::ByteString output;
     for (auto& log: logs) {
         auto bs = encode_log(log);
@@ -587,7 +523,7 @@ rlp::ByteString encode_logs(vector<EVMLog>& logs) {
     return output;
 }
 
-void print_result(evmc_address& address, const uint8_t* output_data, uint32_t output_size, vector<EVMLog>& logs) {
+void print_result(evmc_address& address, const uint8_t* output_data, size_t output_size, vector<evm_log>& logs) {
     vector<rlp::ByteString> vec;
     rlp::ByteString bs, output;
 
@@ -620,7 +556,7 @@ void check_chain_id(int32_t id) {
     EOSIO_ASSERT(id == eth_get_chain_id(), "bad chain id");
 }
 
-result on_call(evmc_message& msg, vector<EVMLog>& logs);
+result on_call(const evmc_message& msg, vector<evm_log>& logs);
 
 extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
 //    EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
@@ -638,11 +574,11 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     
     auto value = std::get<4>(decoded_trx); //value
     //value is big endian encoded
-    msg.value = to_balance(value.data(), value.size());
+    msg.value = to_balance(value.data(), (uint32_t)value.size());
 
     // std::cout << (uint64_t)std::get<5>(decoded_trx) << std::endl; // data
     rlp::ByteString _v = std::get<6>(decoded_trx); //v
-    uint32_t v = big_endian_to_uint32(_v.data(), _v.size());
+    uint32_t v = big_endian_to_uint32(_v.data(), (uint32_t)_v.size());
 
     auto r = std::get<7>(decoded_trx); //r
     auto s = std::get<8>(decoded_trx); //s
@@ -664,7 +600,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     if (_r == 0 && _s == 0) {
         EOSIO_ASSERT(sender_address_size == 20, "evm_execute:bad sender size!");
         memcpy(msg.sender.bytes, sender_address, 20);
-        chain_id = v;
+        chain_id = (int32_t)v;
         check_chain_id(chain_id);
     } else {
         if (v > 36) {
@@ -689,7 +625,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
             memcpy(sign+2+32, s.data(), 32);
             uint8_t pub_key[34];
             auto hash256  = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
-            uint32_t pub_key_size = ::recover_key((checksum256*)hash256.bytes, (const char *)sign, 66, (char *)pub_key, 34);
+            int pub_key_size = ::recover_key((checksum256*)hash256.bytes, (const char *)sign, 66, (char *)pub_key, 34);
             EOSIO_ASSERT(pub_key_size==34, "bad pub key size");
             printhex(pub_key, 34);prints("\n");
             hash256 = ethash::keccak256(pub_key+1, 33);
@@ -701,7 +637,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
             uint8_t sig[65];
             memcpy(sig, r.data(), 32);
             memcpy(sig+32, s.data(), 32);
-            sig[64] = v;
+            sig[64] = uint8_t(v);
             uint8_t empty_data[32];
             memset(empty_data, 0, 32);
             auto hash256 = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
@@ -759,7 +695,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     } else if (msg.kind == EVMC_CALL) {
         msg.input_data = data.data();
         msg.input_size = data.size();
-        vector<EVMLog> logs;
+        vector<evm_log> logs;
 
         auto res = on_call(msg, logs);
         print_result(msg.destination, res.output_data, res.output_size, logs);
@@ -775,18 +711,75 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     return 1;
 }
 
-result on_call(evmc_message& msg, vector<EVMLog>& logs) {
-    vector<uint8_t> code;
-    eth_account_get_code(*(eth_address*)&msg.destination, code);
-    //vmelog("+++++code size: %d\n", code.size());
-    if (code.size() > 0) {
-        auto host = MyHost(msg.sender);
-        auto evm = evmc::VM{evmc_create_evmone()};
-        auto res = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
-        logs = host.get_logs();
-        return res;
-        //vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);
-    }   
+result on_call(const evmc_message& msg, vector<evm_log>& logs) {
+    static evmc_address ecrecover_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
+    static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
+    static evmc_address ripemd160_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03};
+    static evmc_address identity_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04};
+//DELEGATECALL
+    evmc_result res{};
+    if (msg.destination == ecrecover_address) {
+        EOSIO_ASSERT(msg.input_size == 128, "ecrecover: bad input size!");
+        uint8_t _v[32];
+        memcpy(_v, msg.input_data+32, 32);
+        auto __v = to_uint256(msg.input_data+32, 32);
+        memcpy(_v, __v.bytes, 32);
+        intx::uint256 v = intx::le::load<intx::uint256>(_v);
+//            vmelog("+++++++++++v: %d\n", (int)v);
+        if (v >= 27 && v <= 28) {
+            /*
+            hash: 256bit
+            v: 256bit
+            r: 256bit
+            s: 256bit
+            */
+            uint8_t hash[32];
+            uint8_t public_key[65];
+            uint8_t signature[65];
+            const uint8_t *hash_message = msg.input_data;
+            memset(public_key, 0, 65);
+            memcpy(signature, msg.input_data+64, 64);
+            signature[64] = uint8_t(v-27);
+            evm_recover_key(signature, 65, hash_message, 32, public_key, 65);
+            auto hash256 = ethash::keccak256(public_key+1, 64);
+
+            memset(hash, 0, 32);
+            memcpy(hash+12, (char*)&hash256 + 12, 20);
+            res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
+        }
+        // bytes32 *r = (bytes32*)msg.input_data + 2;
+        // bytes32 *s = (bytes32*)msg.input_data + 3;
+        return result(res);
+    } else if (msg.destination == sha256_address) {
+        struct checksum256 hash{};
+        sha256((char *)msg.input_data, (uint32_t)msg.input_size, &hash);
+        //vmelog("++++++++++call sha256, input: %s\n", msg.input_data);
+        res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
+        return result(res);
+    } else if (msg.destination == ripemd160_address) {
+        uint8_t hash[32];
+        memset(hash, 0, 32);
+        ripemd160((char *)msg.input_data, (uint32_t)msg.input_size, (struct checksum160*)&hash[12]);
+        res = evmc_make_result(EVMC_SUCCESS, 0, hash, 32);
+        return result(res);
+    } else if (msg.destination == identity_address) {
+        res = evmc_make_result(EVMC_SUCCESS, 0, msg.input_data, msg.input_size);
+        return result(res);
+    } else {
+        vector<uint8_t> code;
+        eth_account_get_code(*(eth_address*)&msg.destination, code);
+        if (code.size()) {
+            auto host = MyHost(msg.sender);
+            auto evm = evmc::VM{evmc_create_evmone()};
+            auto ret = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
+            logs = host.get_logs();
+            //vmelog("++++++++gas left %d\n", ret.gas_left);
+            return ret;
+        } else {
+            res = evmc_make_result(EVMC_SUCCESS, 0, nullptr, 0);
+            return result(res);
+        }
+    }
 }
 
 /*
