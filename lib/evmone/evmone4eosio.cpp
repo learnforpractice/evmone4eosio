@@ -26,6 +26,7 @@ constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
 evmc_address EmptyAddress{};
 
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size);
+result on_call(evmc_message& msg, vector<EVMLog>& logs);
 
 using namespace eevm;
 using namespace std::string_literals;
@@ -593,8 +594,11 @@ void print_result(evmc_address& address, const uint8_t* output_data, uint32_t ou
     bs = rlp::ByteString(address.bytes, address.bytes + 20);
     bs = rlp::encode(bs);
     output.insert(output.end(), bs.begin(), bs.end());
-    
-    bs = rlp::ByteString(output_data, output_data + output_size);
+    if (output_size > 0) {
+        bs = rlp::ByteString(output_data, output_data + output_size);
+    } else {
+        bs = rlp::ByteString();
+    }
     bs = rlp::encode(bs);
     output.insert(output.end(), bs.begin(), bs.end());
 
@@ -615,6 +619,8 @@ void print_result(evmc_address& address, const uint8_t* output_data, uint32_t ou
 void check_chain_id(int32_t id) {
     EOSIO_ASSERT(id == eth_get_chain_id(), "bad chain id");
 }
+
+result on_call(evmc_message& msg, vector<EVMLog>& logs);
 
 extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
 //    EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
@@ -753,31 +759,15 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     } else if (msg.kind == EVMC_CALL) {
         msg.input_data = data.data();
         msg.input_size = data.size();
-        vector<uint8_t> code;
-        eth_account_get_code(*(eth_address*)&msg.destination, code);
-        //vmelog("+++++code size: %d\n", code.size());
-        if (code.size() > 0) {
-            auto host = MyHost(msg.sender);
-            auto evm = evmc::VM{evmc_create_evmone()};
-            auto res = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
-            print_result(EmptyAddress, res.output_data, res.output_size, host.get_logs());
-            if (res.status_code != EVMC_SUCCESS) {
-                EOSIO_THROW(get_status_error(res.status_code));
-            }
-            //vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);
-        } else {
-            rlp::ByteString bs, output;
-            bs = rlp::ByteString(msg.destination.bytes, msg.destination.bytes + 20);
-            bs = rlp::encode(bs);
-            output.insert(output.end(), bs.begin(), bs.end());
-            
-            bs = rlp::ByteString();
-            bs = rlp::encode(bs);
-            output.insert(output.end(), bs.begin(), bs.end());
+        vector<EVMLog> logs;
 
-            rlp::encode_details::prefix_multiple_length(output.size(), output);
-            printhex(output.data(), uint32_t(output.size()));
+        auto res = on_call(msg, logs);
+        print_result(msg.destination, res.output_data, res.output_size, logs);
+
+        if (res.status_code != EVMC_SUCCESS) {
+            EOSIO_THROW(get_status_error(res.status_code));
         }
+
     } else {
         EOSIO_ASSERT(0, "bad message kind");
     }
@@ -785,6 +775,19 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     return 1;
 }
 
+result on_call(evmc_message& msg, vector<EVMLog>& logs) {
+    vector<uint8_t> code;
+    eth_account_get_code(*(eth_address*)&msg.destination, code);
+    //vmelog("+++++code size: %d\n", code.size());
+    if (code.size() > 0) {
+        auto host = MyHost(msg.sender);
+        auto evm = evmc::VM{evmc_create_evmone()};
+        auto res = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
+        logs = host.get_logs();
+        return res;
+        //vmelog("++++++res.output_size: %d status_code %d\n", res.output_size, res.status_code);
+    }   
+}
 
 /*
 struct evmc_result
