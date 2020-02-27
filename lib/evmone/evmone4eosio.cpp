@@ -300,11 +300,17 @@ struct evmc_tx_context
                              size_t code_offset,
                              uint8_t* buffer_data,
                              size_t buffer_size) const override {
-        (void)addr;
-        (void)code_offset;
-        (void)buffer_data;
-        (void)buffer_size;
-        return 0;
+        vector<uint8_t> code;
+        eth_account_get_code(ETH_ADDRESS(addr), code);
+
+        if (code_offset >= code.size())
+            return 0;
+
+        const auto n = std::min(buffer_size, code.size() - code_offset);
+
+        if (n > 0)
+            std::copy_n(&code[code_offset], n, buffer_data);
+        return n;
     }
 
     /// @copydoc evmc_host_interface::selfdestruct
