@@ -358,7 +358,7 @@ enum evmc_call_kind
             }
             append_logs(_logs);
             return res;
-        } else if (msg.kind == EVMC_CALL || msg.kind == EVMC_DELEGATECALL) {
+        } else if (msg.kind == EVMC_CALL || msg.kind == EVMC_DELEGATECALL || msg.kind == EVMC_CALLCODE) {
             auto res = on_call(msg, _logs);
             if (res.status_code != EVMC_SUCCESS) {
                 EOSIO_THROW(get_status_error(res.status_code));
