@@ -21,7 +21,7 @@ add_library(evmone SHARED
     instructions.cpp
     limits.hpp
     opcodes_helpers.h
-    ${CMAKE_SOURCE_DIR}/ethereum_vm/eth_account.cpp
+#    ${CMAKE_SOURCE_DIR}/ethereum_vm/eth_account.cpp
     ${CMAKE_SOURCE_DIR}/ethereum_vm/eth_account.hpp
 
     ${CMAKE_SOURCE_DIR}/test/utils/utils.cpp
@@ -50,7 +50,7 @@ set(INC_DIRS
     $<BUILD_INTERFACE:${include_dir}>$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE})
+target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE} ${ETH_ACCOUNT_NATIVE})
 target_include_directories(evmone PUBLIC ${INC_DIRS})
 
 set(COMMON_COMPILE_FLAGS ENABLE_MODULE_RECOVERY ENABLE_MODULE_ECDH USE_ECMULT_STATIC_PRECOMPUTATION USE_FIELD_INV_BUILTIN USE_NUM_NONE USE_SCALAR_INV_BUILTIN)
@@ -66,7 +66,7 @@ set_target_properties(
 
 if(NOT SANITIZE)
     # On Linux, check if all symbols in evmone are resolved during linking.
-    target_link_options(evmone PRIVATE $<$<PLATFORM_ID:Linux>:LINKER:--no-undefined>)
+#    target_link_options(evmone PRIVATE $<$<PLATFORM_ID:Linux>:LINKER:--no-undefined>)
 endif()
 
 set_source_files_properties(evmone.cpp PROPERTIES COMPILE_DEFINITIONS PROJECT_VERSION="${PROJECT_VERSION}")
