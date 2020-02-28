@@ -89,10 +89,9 @@ else()
 set(EOSIO_WASM_OLD_BEHAVIOR "Off")
 find_package( eosio.cdt REQUIRED )
 
-add_contract(evmone evmone 
+set(COMMON_SRC 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/ethereum_vm.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/evmone/evmone.h
     analysis.cpp
@@ -117,8 +116,7 @@ add_contract(evmone evmone
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethash/lib/ethash/progpow.cpp
 )
 
-#target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE} ${ETH_ACCOUNT_NATIVE})
-target_include_directories(evmone PUBLIC
+set(EVM_INCLUDES 
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm
     ${CMAKE_CURRENT_SOURCE_DIR}/../../evmc/include
@@ -130,12 +128,35 @@ target_include_directories(evmone PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethash/include
 )
 
+add_contract(ethereum_vm ethereum_vm 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/ethereum_vm.cpp
+    ${COMMON_SRC}
+)
+
+#target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE} ${ETH_ACCOUNT_NATIVE})
+target_include_directories(ethereum_vm PUBLIC
+    ${EVM_INCLUDES}
+)
+
 set(COMMON_COMPILE_FLAGS ENABLE_MODULE_RECOVERY ENABLE_MODULE_ECDH USE_ECMULT_STATIC_PRECOMPUTATION USE_FIELD_INV_BUILTIN USE_NUM_NONE USE_SCALAR_INV_BUILTIN)
 set(COMPILE_FLAGS USE_FIELD_5X52 USE_SCALAR_4X64 HAVE_BUILTIN_EXPECT HAVE___INT128)
-target_compile_definitions(evmone PRIVATE -D__WASM ${COMMON_COMPILE_FLAGS} ${COMPILE_FLAGS})
+target_compile_definitions(ethereum_vm PRIVATE -D__WASM ${COMMON_COMPILE_FLAGS} ${COMPILE_FLAGS})
 
-set_target_properties(evmone
-   PROPERTIES
-   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/ethereum_vm.abi ${CMAKE_CURRENT_BINARY_DIR}/ethereum_vm.abi @COPYONLY )
+
+
+add_contract(evmtest evmtest
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/evmtest.cpp
+    ${COMMON_SRC}
+)
+
+#target_link_libraries(evmone PUBLIC evmc::evmc PRIVATE intx::intx ethash::keccak ${EOSIOLIB_NATIVE} ${ETH_ACCOUNT_NATIVE})
+target_include_directories(evmtest PUBLIC
+    ${EVM_INCLUDES}
+)
+
+set(COMMON_COMPILE_FLAGS ENABLE_MODULE_RECOVERY ENABLE_MODULE_ECDH USE_ECMULT_STATIC_PRECOMPUTATION USE_FIELD_INV_BUILTIN USE_NUM_NONE USE_SCALAR_INV_BUILTIN)
+set(COMPILE_FLAGS USE_FIELD_5X52 USE_SCALAR_4X64 HAVE_BUILTIN_EXPECT HAVE___INT128)
+target_compile_definitions(evmtest PRIVATE -D__WASM ${COMMON_COMPILE_FLAGS} ${COMPILE_FLAGS})
 
 endif()
