@@ -370,7 +370,7 @@ enum evmc_call_kind
     /// @copydoc evmc_host_interface::call
     virtual result call(const evmc_message& msg) override {
         vector<evm_log> _logs;
-
+        evmc_transfer(msg.sender, msg.destination, msg.value);
         if (msg.kind == EVMC_CREATE) {
             evmc_address new_address;
             result res = on_create(msg, msg.input_data, (uint32_t)msg.input_size, _logs, new_address);
@@ -714,6 +714,8 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     //vmelog("+++++++++++++++msg.kind %d\n", msg.kind);
     auto data = std::get<5>(decoded_trx);
 
+    evmc_transfer(msg.sender, msg.destination, msg.value);
+
     if (msg.kind == EVMC_CREATE) {
         // msg.input_data = data.data();
         // msg.input_size = data.size();
@@ -753,11 +755,9 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
 //DELEGATECALL
     evmc_result res{};
 
-    evmc_transfer(msg.sender, msg.destination, msg.value);
-
     uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
-//    EOSIO_ASSERT(nonce >= 1, "on_call: bad nonce");
+//    EOSIO_ASSERT(nonce >= 0, "on_call: bad nonce");
     eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
 
     if (msg.destination == ecrecover_address) {
@@ -839,7 +839,7 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
 result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address) {
     uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
-//    EOSIO_ASSERT(nonce >= 1, "on_create:bad nonce!");
+//    EOSIO_ASSERT(nonce >= 0, "on_create:bad nonce!");
 
     rlp::ByteString addr;
     addr.resize(20);
@@ -853,8 +853,6 @@ result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_siz
 
     uint64_t creator = eth_account_find_creator_by_address(*(eth_address *)&msg.sender);
     eth_account_create(*(eth_address *)&new_address, creator);
-
-    evmc_transfer(msg.sender, msg.destination, msg.value);
 
     evmc_message msg_creation = msg;
     msg_creation.destination = new_address;
