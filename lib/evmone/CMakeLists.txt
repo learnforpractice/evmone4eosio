@@ -89,10 +89,7 @@ else()
 set(EOSIO_WASM_OLD_BEHAVIOR "Off")
 find_package( eosio.cdt REQUIRED )
 
-set(COMMON_SRC 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.hpp
-
+set(COMMON_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/evmone/evmone.h
     analysis.cpp
     analysis.hpp
@@ -129,6 +126,8 @@ set(EVM_INCLUDES
 )
 
 add_contract(ethereum_vm ethereum_vm 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/ethereum_vm.cpp
     ${COMMON_SRC}
 )
@@ -137,7 +136,7 @@ add_contract(ethereum_vm ethereum_vm
 target_include_directories(ethereum_vm PUBLIC
     ${EVM_INCLUDES}
 )
-
+#-DUSE_INTRINSIC_EVM_EXECUTE 
 set(COMMON_COMPILE_FLAGS ENABLE_MODULE_RECOVERY ENABLE_MODULE_ECDH USE_ECMULT_STATIC_PRECOMPUTATION USE_FIELD_INV_BUILTIN USE_NUM_NONE USE_SCALAR_INV_BUILTIN)
 set(COMPILE_FLAGS USE_FIELD_5X52 USE_SCALAR_4X64 HAVE_BUILTIN_EXPECT HAVE___INT128)
 target_compile_definitions(ethereum_vm PRIVATE -D__WASM ${COMMON_COMPILE_FLAGS} ${COMPILE_FLAGS})
@@ -146,6 +145,8 @@ configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/ethereum_vm.abi ${
 
 
 add_contract(evmtest evmtest
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/evmtest.cpp
     ${COMMON_SRC}
 )
@@ -155,6 +156,7 @@ target_include_directories(evmtest PUBLIC
     ${EVM_INCLUDES}
 )
 
+#-DUSE_INTRINSIC_EVM_EXECUTE
 set(COMMON_COMPILE_FLAGS ENABLE_MODULE_RECOVERY ENABLE_MODULE_ECDH USE_ECMULT_STATIC_PRECOMPUTATION USE_FIELD_INV_BUILTIN USE_NUM_NONE USE_SCALAR_INV_BUILTIN)
 set(COMPILE_FLAGS USE_FIELD_5X52 USE_SCALAR_4X64 HAVE_BUILTIN_EXPECT HAVE___INT128)
 target_compile_definitions(evmtest PRIVATE -D__WASM ${COMMON_COMPILE_FLAGS} ${COMPILE_FLAGS})

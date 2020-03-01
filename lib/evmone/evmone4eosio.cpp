@@ -50,11 +50,29 @@ uint256be to_uint256(int64_t value) {
     return _value;
 }
 
+uint256be to_uint256(eth_uint256& value) {
+    uint256be _value{};
+
+    for (int i=0;i<32;i++) {
+        _value.bytes[31-i] = ((uint8_t*)&value)[i];
+    }
+    return _value;
+}
+
 uint256be to_little_endian(int64_t value) {
     uint256be _value{};
 
     for (int i=0;i<8;i++) {
         _value.bytes[i] = ((uint8_t*)&value)[i];
+    }
+    return _value;
+}
+
+uint256be to_little_endian(const uint8_t* value, uint32_t size) {
+    uint256be _value{};
+
+    for (uint32_t i=0;i<size;i++) {
+        _value.bytes[i] = value[size-1-i];
     }
     return _value;
 }
@@ -112,27 +130,26 @@ void print_hex(const uint8_t* data, uint32_t size) {
 
 void evmc_transfer(const evmc_address& sender, const evmc_address& receiver, const evmc_uint256be& value) {
 
-    int64_t amount = uint256_to_int64(value);
+    uint256_t amount = from_big_endian(value.bytes, 32);
 
-    EOSIO_ASSERT(amount <= max_amount && amount >= 0, "call:bad transfer value");
+    // EOSIO_ASSERT(amount <= max_amount && amount >= 0, "call:bad transfer value");
     if (amount == 0) {
         return;
     }
 
-    int64_t sender_amount = eth_account_get_balance(*(eth_address*)&sender);
+    eth_uint256 _sender_amount = eth_account_get_balance(*(eth_address*)&sender);
+    eth_uint256 _receiver_amount = eth_account_get_balance(*(eth_address*)&receiver);
+    uint256_t& sender_amount = *(uint256_t*)&_sender_amount;
+    uint256_t& receiver_amount = *(uint256_t*)&_receiver_amount;
     EOSIO_ASSERT(sender_amount >= amount, "call:overdraw balance!");
     sender_amount -= amount;
-    EOSIO_ASSERT( -max_amount <= sender_amount, "subtraction underflow" );
-    EOSIO_ASSERT( sender_amount <= max_amount,  "subtraction overflow" );
-
-    int64_t receiver_amount = eth_account_get_balance(*(eth_address*)&receiver);
     receiver_amount += amount;
+    if (receiver_amount < amount) {
+        EOSIO_THROW("receiver amount overflow!");
+    }
 
-    EOSIO_ASSERT( -max_amount <= receiver_amount, "addition underflow" );
-    EOSIO_ASSERT( receiver_amount <= max_amount,  "addition overflow" );
-
-    eth_account_set_balance(*(eth_address*)&sender, sender_amount);
-    eth_account_set_balance(*(eth_address*)&receiver, receiver_amount);
+    eth_account_set_balance(*(eth_address*)&sender, _sender_amount);
+    eth_account_set_balance(*(eth_address*)&receiver, _receiver_amount);
 }
 
 const char *get_status_error(evmc_status_code& status_code) {
@@ -270,7 +287,8 @@ struct evmc_tx_context
 
     /// @copydoc evmc_host_interface::get_balance
     virtual uint256be get_balance(const address& addr) const override {
-        int64_t balance = eth_account_get_balance(ETH_ADDRESS(addr));
+        auto balance = eth_account_get_balance(ETH_ADDRESS(addr));
+        //convert balance from little endian to big endian
         return to_uint256(balance);
     }
 
@@ -315,12 +333,15 @@ struct evmc_tx_context
 
     /// @copydoc evmc_host_interface::selfdestruct
     virtual void selfdestruct(const address& addr, const address& beneficiary) override {
-        int64_t balance_addr = eth_account_get_balance(ETH_ADDRESS(addr));
-        int64_t balance_beneficiary = eth_account_get_balance(ETH_ADDRESS(beneficiary));
-        balance_beneficiary += balance_addr;
+        auto _balance_addr = eth_account_get_balance(ETH_ADDRESS(addr));
+        auto _balance_beneficiary = eth_account_get_balance(ETH_ADDRESS(beneficiary));
+        uint256_t& balance_addr = *(uint256_t*)&_balance_addr;
+        uint256_t& balance_beneficiary = *(uint256_t*)&_balance_beneficiary;
 
-        eth_account_set_balance(ETH_ADDRESS(addr), 0);
-        eth_account_set_balance(ETH_ADDRESS(beneficiary), balance_beneficiary);
+        balance_beneficiary += balance_addr;
+        eth_uint256 zero{};
+        eth_account_set_balance(ETH_ADDRESS(addr), zero);
+        eth_account_set_balance(ETH_ADDRESS(beneficiary), _balance_beneficiary);
         eth_account_clear_code(ETH_ADDRESS(addr));
     }
 
@@ -443,6 +464,7 @@ extern "C" void load_secp256k1_ecmult_static_context();
 
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size) {    
     if (_signature_size != 65 || _message_len != 32 || _serialized_public_key_size != 65) {
+        EOSIO_THROW("wrong argument size");
         return 0;
     }
     
@@ -579,11 +601,12 @@ void print_result(evmc_address& address, const uint8_t* output_data, size_t outp
 }
 
 void check_chain_id(int32_t id) {
-    EOSIO_ASSERT(id == eth_get_chain_id(), "bad chain id");
+    EOSIO_ASSERT(id == eth_get_chain_id() || id == -4, "bad chain id!");
 }
 
 result on_call(const evmc_message& msg, vector<evm_log>& logs);
 
+#ifndef USE_INTRINSIC_EVM_EXECUTE
 extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
 //    EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
     auto decoded_trx = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString>(raw_trx, raw_trx_size);
@@ -639,7 +662,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
 
         rlp::ByteString unsigned_trx = rlp::encode(std::get<0>(decoded_trx), std::get<1>(decoded_trx),std::get<2>(decoded_trx),std::get<3>(decoded_trx),std::get<4>(decoded_trx),std::get<5>(decoded_trx));
 
-        if ((0xff800000 & uint32_t(chain_id)) != 0) {//sign with eos private key
+        if (chain_id != -4 && (0xff800000 & uint32_t(chain_id)) != 0) {//sign with eos private key
             uint8_t first_byte = uint32_t(chain_id) >> 24; //first byte of eos signature
             chain_id = uint32_t(chain_id) & 0x7fffff;
             check_chain_id(chain_id);
@@ -662,15 +685,14 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
             uint8_t sig[65];
             memcpy(sig, r.data(), 32);
             memcpy(sig+32, s.data(), 32);
-            sig[64] = uint8_t(v);
-            uint8_t empty_data[32];
-            memset(empty_data, 0, 32);
+
+            sig[64] = uint8_t((int32_t)v - (chain_id * 2 + 35));
             auto hash256 = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
-            uint8_t hash[32];
-            evm_recover_key(sig, 65, (uint8_t *)&hash256, 32, hash, 32);
-            hash256 = ethash::keccak256(hash, 32);
-//            printhex(&hash256, 32);
-            memcpy(msg.sender.bytes, hash256.bytes + 12, 20);
+            uint8_t pub_key[65];
+            memset(pub_key, 0, 65);
+            evm_recover_key(sig, 65, (uint8_t *)&hash256, 32, pub_key, 65);
+            auto addr = ethash::keccak256(pub_key+1, 64);
+            memcpy(msg.sender.bytes, addr.bytes + 12, 20);
             eth_account_check_address(*(eth_address*)&msg.sender);
         }
     }
@@ -705,6 +727,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
     } else if (msg.kind == EVMC_CALL) {
         msg.input_data = data.data();
         msg.input_size = data.size();
+        msg.gas = max_gas_limit;
         vector<evm_log> logs;
 
         auto res = on_call(msg, logs);
@@ -720,6 +743,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
 
     return 1;
 }
+#endif
 
 result on_call(const evmc_message& msg, vector<evm_log>& logs) {
     static evmc_address ecrecover_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
@@ -733,7 +757,7 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
 
     uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
-    EOSIO_ASSERT(nonce >= 1, "on_call: bad nonce");
+//    EOSIO_ASSERT(nonce >= 1, "on_call: bad nonce");
     eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
 
     if (msg.destination == ecrecover_address) {
@@ -815,7 +839,7 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
 result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address) {
     uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
-    EOSIO_ASSERT(nonce >= 1, "on_create:bad nonce!");
+//    EOSIO_ASSERT(nonce >= 1, "on_create:bad nonce!");
 
     rlp::ByteString addr;
     addr.resize(20);
