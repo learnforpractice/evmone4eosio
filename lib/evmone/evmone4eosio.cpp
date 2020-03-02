@@ -550,12 +550,12 @@ rlp::ByteString encode_log(evm_log& log) {
     bs = rlp::ByteString(log.addr.bytes, log.addr.bytes + 20);
     bs = rlp::encode(bs);
     output.insert(output.end(), bs.begin(), bs.end());
-    
-    bs = rlp::ByteString(log.data.data(), log.data.data() + log.data.size());
-    bs = rlp::encode(bs);
-    output.insert(output.end(), bs.begin(), bs.end());
 
     bs = encode_topics(log.topics);
+    output.insert(output.end(), bs.begin(), bs.end());
+
+    bs = rlp::ByteString(log.data.data(), log.data.data() + log.data.size());
+    bs = rlp::encode(bs);
     output.insert(output.end(), bs.begin(), bs.end());
 
     rlp::encode_details::prefix_multiple_length(output.size(), output);
