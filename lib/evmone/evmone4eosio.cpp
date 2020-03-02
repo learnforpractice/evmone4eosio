@@ -34,7 +34,8 @@ struct evm_log {
 #define EVMC_VERSION EVMC_ISTANBUL
 
 constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
-evmc_address EmptyAddress{};
+static bytes32 zero_bytes32{};
+static evmc_address EmptyAddress{};
 
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size);
 
@@ -258,16 +259,8 @@ struct evmc_tx_context
 
     /// @copydoc evmc_host_interface::get_storage
     virtual bytes32 get_storage(const address& addr, const bytes32& key) const override {
-        eth_address _addr;
-        key256 _key;
-        value256 _value;
-        bytes32 value;
-
-        memcpy(_key.data(), key.bytes, 32);
-        memcpy(_addr.data(), addr.bytes, 20);
-        bool ret = eth_account_get_value(_addr, _key, _value);
-        (void)ret;
-        memcpy(value.bytes, _value.data(), 32);
+        bytes32 value{};
+        bool ret = eth_account_get_value(*(eth_address*)&addr, *(key256*)&key, *(value256*)&value);
         return value;
     }
 
@@ -275,15 +268,24 @@ struct evmc_tx_context
     virtual evmc_storage_status set_storage(const address& addr,
                                             const bytes32& key,
                                             const bytes32& value) override {
-        key256 _key;
-        value256 _value;
+        bytes32 old_value{};
+        bool value_exists = eth_account_get_value(*(eth_address*)&addr, *(key256*)&key, *(value256*)&old_value);
 
-        memcpy(_key.data(), key.bytes, 32);
-        memcpy(_value.data(), value.bytes, 32);
-        bool ret = eth_account_set_value(*(eth_address*)&addr, _key, _value);
-        (void)ret;
-        return EVMC_STORAGE_MODIFIED;
-
+        if (value == old_value) {
+            return EVMC_STORAGE_UNCHANGED;
+        } else {
+            if (value == zero_bytes32) {
+                eth_account_clear_value(*(eth_address*)&addr, *(key256*)&key);
+                return EVMC_STORAGE_DELETED;
+            } else {
+                eth_account_set_value(*(eth_address*)&addr, *(key256*)&key, *(value256*)&value);
+                if (value_exists) {
+                    return EVMC_STORAGE_MODIFIED;
+                } else {
+                    return EVMC_STORAGE_ADDED;
+                }
+            }
+        }
     // EVMC_STORAGE_UNCHANGED = 0
     // EVMC_STORAGE_MODIFIED = 1,
     // EVMC_STORAGE_MODIFIED_AGAIN = 2,
