@@ -699,7 +699,7 @@ namespace eevm
     // Core helper. Forwards to decode_impl, ensures entire input has been
     // consumed
     template <typename... Ts>
-    std::tuple<Ts...> decode(const uint8_t*& data, size_t& size)
+    std::tuple<Ts...> decode(const uint8_t*& data, size_t size)
     {
       auto res = decode_details::decode_impl<Ts...>(data, size);
 

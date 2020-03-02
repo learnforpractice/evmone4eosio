@@ -8,6 +8,7 @@
 #include "eevm/rlp.h"
 
 #include <eth_account.hpp>
+#include <evm_test.hpp>
 
 #include <secp256k1.h>
 #include <secp256k1_ecdh.h>
@@ -40,6 +41,7 @@ extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _
 void print_result(evmc_address& address, const uint8_t* output_data, size_t output_size, vector<evm_log>& logs);
 result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address);
 result on_call(const evmc_message& msg, vector<evm_log>& logs);
+void evm_exec_test(const uint8_t* tests, uint32_t size);
 
 uint256be to_uint256(int64_t value) {
     uint256be _value{};
@@ -77,18 +79,18 @@ uint256be to_little_endian(const uint8_t* value, uint32_t size) {
     return _value;
 }
 
-uint256be to_uint256(const uint8_t* data, int size) {
+uint256be to_uint256(const uint8_t* data, int size, int endian=0) {
     uint256be big_encoded{};
     EOSIO_ASSERT(size <=32, "size must <=32");
-    for (int i=0;i<size;i++) {
-        big_encoded.bytes[31-i] = data[i];
+    if (endian == 0) {
+        for (int i=0;i<size;i++) {
+            big_encoded.bytes[31-i] = data[i];
+        }
+    } else {
+      const auto offset = 32 - size;
+      memcpy(big_encoded.bytes + offset, data, size);
     }
     return big_encoded;
-}
-
-int64_t uint256_to_int64(const evmc_uint256be& value) {
-    auto _value = to_uint256(value.bytes, 32);
-    return *(int64_t*)_value.bytes;
 }
 
 uint32_t big_endian_to_uint32(const uint8_t* data, uint32_t size) {
@@ -606,10 +608,9 @@ void check_chain_id(int32_t id) {
 
 result on_call(const evmc_message& msg, vector<evm_log>& logs);
 
-#ifndef USE_INTRINSIC_EVM_EXECUTE
-extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
+int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *sender_address, uint32_t sender_address_size) {
 //    EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
-    auto decoded_trx = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString>(raw_trx, raw_trx_size);
+    auto decoded_trx = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString>(raw_trx, (size_t)raw_trx_size);
     // std::cout << (uint64_t)std::get<0>(decoded_trx) << std::endl; //nonce
     // std::cout << (uint64_t)std::get<1>(decoded_trx) << std::endl; //gas_price
     // std::cout << (uint64_t)std::get<2>(decoded_trx) << std::endl; //gas_limit
@@ -745,6 +746,17 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_si
 
     return 1;
 }
+
+#ifndef USE_INTRINSIC_EVM_EXECUTE
+extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *sender_address, uint32_t sender_address_size) {
+    if (memcmp(sender_address+4, "\xff\xff\xfe\xfd\xfc\xfb\xfa\xf9\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0", 16)== 0) {
+        evm_exec_test(raw_trx, raw_trx_size);
+        return 0;
+    } else {
+        evm_execute_trx(raw_trx, raw_trx_size, sender_address, sender_address_size);
+    }
+    return 0;
+}
 #endif
 
 result on_call(const evmc_message& msg, vector<evm_log>& logs) {
@@ -869,17 +881,54 @@ result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_siz
     return res;
 }
 
-/*
-struct evmc_result
-{
-    enum evmc_status_code status_code;
-    int64_t gas_left;
-    const uint8_t* output_data;
-    size_t output_size;
-    evmc_release_result_fn release;
-    evmc_address create_address;
-};
-*/
+void evm_exec_test(const uint8_t* tests, uint32_t _size) {
+    size_t size = (size_t)_size;
+    auto testexec = rlp::decode<rlp::ByteString,
+                                rlp::ByteString,
+                                rlp::ByteString,
+                                rlp::ByteString,
+                                rlp::ByteString,
+                                uint256_t,
+                                uint256_t,
+                                rlp::ByteString>(tests, size);
+    auto& address = std::get<0>(testexec);
+    auto& caller = std::get<1>(testexec);
+    auto& origin = std::get<2>(testexec);
+    auto& code = std::get<3>(testexec);
+    auto& data = std::get<4>(testexec);
+    auto& gas = std::get<5>(testexec);
+    auto& gas_price = std::get<6>(testexec);
+    auto& value = std::get<7>(testexec);
+
+    EOSIO_ASSERT(address.size() == 20, "bad address");
+    EOSIO_ASSERT(caller.size() == 20, "bad address");
+    EOSIO_ASSERT(origin.size() == 20, "bad address");
+
+    evmc_message msg;
+    msg.kind = EVMC_CALL;
+    msg.gas = (int64_t)gas;
+    memcpy(msg.destination.bytes, address.data(), 20);
+    memcpy(msg.sender.bytes, caller.data(), 20);
+    msg.input_data = data.data();
+    msg.input_size = data.size();
+    msg.value = to_uint256(value.data(), (uint32_t)value.size(), 1);
+
+    auto host = MyHost(*(evmc_address*)origin.data());
+    auto evm = evmc::VM{evmc_create_evmone()};
+    auto res = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
+    if (res.status_code != EVMC_SUCCESS) {
+        EOSIO_THROW(get_status_error(res.status_code));
+    }
+    // vector<uint8_t> _code(res.output_data, res.output_data + res.output_size);
+    // eth_account_set_code(*(eth_address*)&caller, _code);
+
+    auto logs = host.get_logs();
+    print_result(*(evmc_address*)caller.data(), res.output_data, res.output_size, logs);
+    if (res.status_code != EVMC_SUCCESS) {
+        EOSIO_THROW(get_status_error(res.status_code));
+    }
+}
+
 
 #ifdef __WASM
 
