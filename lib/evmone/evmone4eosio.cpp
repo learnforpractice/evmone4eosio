@@ -227,6 +227,10 @@ struct evmc_tx_context
     evmc_uint256be chain_id;         /**< The blockchain's ChainID. */
 };
 #endif
+    explicit MyHost(const evmc_tx_context& ctx) noexcept {
+        tx_context = ctx;
+    }
+
     explicit MyHost(const evmc_address& _origin) noexcept {
         tx_context.block_difficulty = {};
         tx_context.block_coinbase = {};
@@ -890,7 +894,14 @@ void evm_exec_test(const uint8_t* tests, uint32_t _size) {
                                 rlp::ByteString,
                                 uint256_t,
                                 uint256_t,
-                                rlp::ByteString>(tests, size);
+                                rlp::ByteString,
+
+                                rlp::ByteString,
+                                uint256_t,
+                                uint256_t,
+                                uint256_t,
+                                uint256_t
+                                >(tests, size);
     auto& address = std::get<0>(testexec);
     auto& caller = std::get<1>(testexec);
     auto& origin = std::get<2>(testexec);
@@ -899,6 +910,12 @@ void evm_exec_test(const uint8_t* tests, uint32_t _size) {
     auto& gas = std::get<5>(testexec);
     auto& gas_price = std::get<6>(testexec);
     auto& value = std::get<7>(testexec);
+
+    auto& coinbase = std::get<8>(testexec);
+    auto& difficulty = std::get<9>(testexec);
+    auto& gaslimit = std::get<10>(testexec);
+    auto& blocknumber = std::get<11>(testexec);
+    auto& timestamp = std::get<12>(testexec);
 
     EOSIO_ASSERT(address.size() == 20, "bad address");
     EOSIO_ASSERT(caller.size() == 20, "bad address");
@@ -913,7 +930,27 @@ void evm_exec_test(const uint8_t* tests, uint32_t _size) {
     msg.input_size = data.size();
     msg.value = to_uint256(value.data(), (uint32_t)value.size(), 1);
 
-    auto host = MyHost(*(evmc_address*)origin.data());
+    // "env" : {
+    //     "currentCoinbase" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
+    //     "currentDifficulty" : "0x0100",
+    //     "currentGasLimit" : "0x0f4240",
+    //     "currentNumber" : "0x00",
+    //     "currentTimestamp" : "0x01"
+    // },
+    evmc_tx_context tx_context{};
+
+    EOSIO_ASSERT(coinbase.size() == 20, "bad coinbase size");
+    tx_context.tx_origin = *(evmc_address*)origin.data();
+    memcpy(tx_context.block_coinbase.bytes, coinbase.data(), 20);
+    tx_context.block_number = (int64_t)blocknumber;
+    tx_context.block_timestamp = (int64_t)timestamp;
+    tx_context.block_gas_limit = (int64_t)gaslimit;
+    intx::be::store(tx_context.block_difficulty.bytes, difficulty);
+
+    int32_t id = eth_get_chain_id();
+    tx_context.chain_id = to_little_endian(id);
+
+    auto host = MyHost(tx_context);
     auto evm = evmc::VM{evmc_create_evmone()};
     auto res = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
     if (res.status_code != EVMC_SUCCESS) {
