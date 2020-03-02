@@ -79,11 +79,11 @@ uint256be to_little_endian(const uint8_t* value, uint32_t size) {
     return _value;
 }
 
-uint256be to_uint256(const uint8_t* data, int size, int endian=0) {
+uint256be to_uint256(const uint8_t* data, uint32_t size, int endian=0) {
     uint256be big_encoded{};
     EOSIO_ASSERT(size <=32, "size must <=32");
     if (endian == 0) {
-        for (int i=0;i<size;i++) {
+        for (uint32_t i=0;i<size;i++) {
             big_encoded.bytes[31-i] = data[i];
         }
     } else {
@@ -577,7 +577,7 @@ rlp::ByteString encode_logs(vector<evm_log>& logs) {
     return output;
 }
 
-void print_result(evmc_address& address, const uint8_t* output_data, size_t output_size, vector<evm_log>& logs) {
+void print_result(evmc_address& address, const uint8_t* output_data, size_t output_size, vector<evm_log>& logs, int64_t gas_cost) {
     vector<rlp::ByteString> vec;
     rlp::ByteString bs, output;
 
@@ -592,10 +592,11 @@ void print_result(evmc_address& address, const uint8_t* output_data, size_t outp
     bs = rlp::encode(bs);
     output.insert(output.end(), bs.begin(), bs.end());
 
-    if (logs.size()) {
-        bs = encode_logs(logs);
-        output.insert(output.end(), bs.begin(), bs.end());
-    }
+    bs = encode_logs(logs);
+    output.insert(output.end(), bs.begin(), bs.end());
+
+    bs = rlp::encode((uint64_t)gas_cost);
+    output.insert(output.end(), bs.begin(), bs.end());
 
     // rlp::ByteString prefix;
     // rlp::encode_details::prefix_multiple_length(output.size(), prefix);
@@ -727,7 +728,7 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
         vector<evm_log> logs;
         evmc_address new_address;
         result res = on_create(msg, data.data(), (uint32_t)data.size(), logs, new_address);
-        print_result(new_address, res.output_data, res.output_size, logs);
+        print_result(new_address, res.output_data, res.output_size, logs, res.gas_left);
         if (res.status_code != EVMC_SUCCESS) {
             EOSIO_THROW(get_status_error(res.status_code));
         }
@@ -738,7 +739,7 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
         vector<evm_log> logs;
 
         auto res = on_call(msg, logs);
-        print_result(msg.destination, res.output_data, res.output_size, logs);
+        print_result(msg.destination, res.output_data, res.output_size, logs, res.gas_left);
 
         if (res.status_code != EVMC_SUCCESS) {
             EOSIO_THROW(get_status_error(res.status_code));
@@ -960,7 +961,7 @@ void evm_exec_test(const uint8_t* tests, uint32_t _size) {
     // eth_account_set_code(*(eth_address*)&caller, _code);
 
     auto logs = host.get_logs();
-    print_result(*(evmc_address*)caller.data(), res.output_data, res.output_size, logs);
+    print_result(*(evmc_address*)caller.data(), res.output_data, res.output_size, logs, res.gas_left);
     if (res.status_code != EVMC_SUCCESS) {
         EOSIO_THROW(get_status_error(res.status_code));
     }
