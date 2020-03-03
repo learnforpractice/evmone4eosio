@@ -30,8 +30,9 @@ struct evm_log {
     vector<bytes32> topics;
 };
 
-//#define EVMC_VERSION EVMC_BYZANTIUM
-#define EVMC_VERSION EVMC_ISTANBUL
+#define EVMC_VERSION EVMC_BYZANTIUM
+// #define EVMC_VERSION EVMC_ISTANBUL
+// #define EVMC_VERSION EVMC_FRONTIER
 
 constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
 static bytes32 zero_bytes32{};
@@ -889,6 +890,7 @@ result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_siz
 }
 
 void evm_exec_test(const uint8_t* tests, uint32_t _size) {
+    char *ptr = (char *)malloc(1);
     size_t size = (size_t)_size;
     auto testexec = rlp::decode<rlp::ByteString,
                                 rlp::ByteString,

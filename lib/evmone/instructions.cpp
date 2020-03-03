@@ -4,6 +4,7 @@
 
 #include "analysis.hpp"
 #include <ethash/keccak.hpp>
+#include <eosiolib_legacy/eosiolib.h>
 
 namespace evmone
 {
@@ -296,7 +297,7 @@ const instruction* op_sar(const instruction* instr, execution_state& state) noex
     return ++instr;
 }
 
-const instruction* op_sha3(const instruction* instr, execution_state& state) noexcept
+const instruction* op_sha3(const instruction* instr, execution_state& state)
 {
     const auto index = state.stack.pop();
     auto& size = state.stack.top();
@@ -1429,10 +1430,10 @@ constexpr op_table op_tables[] = {
     // create_op_table_homestead(),          // Homestead
     // create_op_table_tangerine_whistle(),  // Tangerine Whistle
     // create_op_table_tangerine_whistle(),  // Spurious Dragon
-    // create_op_table_byzantium(),          // Byzantium
+    create_op_table_byzantium(),          // Byzantium
     // create_op_table_constantinople(),     // Constantinople
     // create_op_table_constantinople(),     // Petersburg
-    create_op_table_istanbul(),           // Istanbul
+    // create_op_table_istanbul(),           // Istanbul
     // create_op_table_istanbul(),           // Berlin
 };
 // static_assert(sizeof(op_tables) / sizeof(op_tables[0]) > EVMC_MAX_REVISION,
@@ -1441,7 +1442,8 @@ constexpr op_table op_tables[] = {
 
 EVMC_EXPORT const op_table& get_op_table(evmc_revision rev) noexcept
 {
-//    return op_tables[rev];
+    EOSIO_ASSERT(rev == EVMC_BYZANTIUM, "evmc revision not supported");
     return op_tables[0];
 }
+
 }  // namespace evmone
