@@ -12,11 +12,10 @@ using namespace evmc;
 using namespace intx;
 using namespace eevm;
 
-#define EVMC_VERSION EVMC_BYZANTIUM
-// #define EVMC_VERSION EVMC_ISTANBUL
 // #define EVMC_VERSION EVMC_FRONTIER
 // #define EVMC_VERSION EVMC_HOMESTEAD
-// #define EVMC_VERSION EVMC_TANGERINE_WHISTLE
+#define EVMC_VERSION EVMC_BYZANTIUM
+// #define EVMC_VERSION EVMC_ISTANBUL
 
 struct evm_log {
     address addr;

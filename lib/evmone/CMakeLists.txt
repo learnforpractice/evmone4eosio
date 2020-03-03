@@ -11,10 +11,10 @@ message(STATUS +++++++++++++++++${CMAKE_SOURCE_DIR})
 
 add_library(evmone SHARED
     ${include_dir}/evmone/evmone.h
-    test.cpp
     evmhost.cpp
     evmhost.hpp
     utility.cpp
+    utility.hpp
     evmone4eosio_test.cpp
 
     analysis.cpp
@@ -99,7 +99,6 @@ set(COMMON_SRC
     evmhost.cpp
     evmhost.hpp
     utility.cpp
-    evmone4eosio_test.cpp
 
     analysis.cpp
     analysis.hpp
@@ -158,6 +157,7 @@ add_contract(evmtest evmtest
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/eth_account.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../ethereum_vm/evmtest.cpp
+    evmone4eosio_test.cpp
     ${COMMON_SRC}
 )
 

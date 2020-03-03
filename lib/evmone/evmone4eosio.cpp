@@ -191,16 +191,30 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
     return 1;
 }
 
-#ifndef USE_INTRINSIC_EVM_EXECUTE
+#ifndef __WASM
+
+//evmone4eosio_test.cpp
+extern "C" void evm_execute_test(const uint8_t* tests, uint32_t _size);
+
 extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *sender_address, uint32_t sender_address_size) {
     if (memcmp(sender_address+4, "\xff\xff\xfe\xfd\xfc\xfb\xfa\xf9\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0", 16)== 0) {
-        evm_exec_test(raw_trx, raw_trx_size);
+        evm_execute_test(raw_trx, raw_trx_size);
         return 0;
     } else {
         evm_execute_trx(raw_trx, raw_trx_size, sender_address, sender_address_size);
     }
     return 0;
 }
+
+#else
+
+#ifndef USE_INTRINSIC_EVM_EXECUTE
+extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *sender_address, uint32_t sender_address_size) {
+    evm_execute_trx(raw_trx, raw_trx_size, sender_address, sender_address_size);
+    return 0;
+}
+#endif
+
 #endif
 
 
@@ -216,6 +230,15 @@ extern "C" {
 #endif
 
 }
+namespace std {
+    inline namespace __1 {
+        size_t __next_prime(unsigned int a) {
+            EOSIO_THROW("bad call of __next_prime!");
+            return 0;
+        }
+    }
+}
+
 namespace std {
     bool uncaught_exception() noexcept {
         EOSIO_THROW("bad call of uncaught_exception!");

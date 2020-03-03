@@ -1,7 +1,6 @@
 #include "evmhost.hpp"
 
-void evm_exec_test(const uint8_t* tests, uint32_t _size) {
-    char *ptr = (char *)malloc(1);
+extern "C" void evm_execute_test(const uint8_t* tests, uint32_t _size) {
     size_t size = (size_t)_size;
     auto testexec = rlp::decode<rlp::ByteString,
                                 rlp::ByteString,
