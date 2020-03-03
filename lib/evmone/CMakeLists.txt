@@ -12,6 +12,11 @@ message(STATUS +++++++++++++++++${CMAKE_SOURCE_DIR})
 add_library(evmone SHARED
     ${include_dir}/evmone/evmone.h
     test.cpp
+    evmhost.cpp
+    evmhost.hpp
+    utility.cpp
+    evmone4eosio_test.cpp
+
     analysis.cpp
     analysis.hpp
     evmone.cpp
@@ -91,6 +96,11 @@ find_package( eosio.cdt REQUIRED )
 
 set(COMMON_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/evmone/evmone.h
+    evmhost.cpp
+    evmhost.hpp
+    utility.cpp
+    evmone4eosio_test.cpp
+
     analysis.cpp
     analysis.hpp
     evmone.cpp
