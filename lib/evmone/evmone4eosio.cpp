@@ -948,6 +948,7 @@ void evm_exec_test(const uint8_t* tests, uint32_t _size) {
     tx_context.block_number = (int64_t)blocknumber;
     tx_context.block_timestamp = (int64_t)timestamp;
     tx_context.block_gas_limit = (int64_t)gaslimit;
+    intx::be::store(tx_context.tx_gas_price.bytes, gas_price);
     intx::be::store(tx_context.block_difficulty.bytes, difficulty);
 
     int32_t id = eth_get_chain_id();
@@ -959,8 +960,6 @@ void evm_exec_test(const uint8_t* tests, uint32_t _size) {
     if (res.status_code != EVMC_SUCCESS) {
         EOSIO_THROW(get_status_error(res.status_code));
     }
-    // vector<uint8_t> _code(res.output_data, res.output_data + res.output_size);
-    // eth_account_set_code(*(eth_address*)&caller, _code);
 
     auto logs = host.get_logs();
     print_result(*(evmc_address*)caller.data(), res.output_data, res.output_size, logs, res.gas_left);
