@@ -6,7 +6,7 @@
 #include <regex>
 #include <stdexcept>
 
-#include <eosiolib/system.h>
+#include <eosiolib_legacy/system.h>
 #define EOSIO_THROW(msg) eosio_assert(false, msg)
 
 
