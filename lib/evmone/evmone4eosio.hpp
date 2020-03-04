@@ -43,8 +43,8 @@ constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size);
 
 void print_result(evmc_address& address, const uint8_t* output_data, size_t output_size, vector<evm_log>& logs);
-result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address);
-result on_call(const evmc_message& msg, vector<evm_log>& logs);
+result on_create(evmc_revision version, evmc_address& origin, const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address);
+result on_call(evmc_revision version, evmc_address& origin, const evmc_message& msg, vector<evm_log>& logs);
 void evm_exec_test(const uint8_t* tests, uint32_t size);
 
 

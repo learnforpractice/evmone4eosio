@@ -16,6 +16,11 @@
 
 #include "evmhost.hpp"
 
+// #define EVMC_VERSION EVMC_FRONTIER
+// #define EVMC_VERSION EVMC_HOMESTEAD
+// #define EVMC_VERSION EVMC_BYZANTIUM
+#define EVMC_VERSION EVMC_ISTANBUL
+
 void evmc_transfer(const evmc_address& sender, const evmc_address& receiver, const evmc_uint256be& value) {
 
     uint256_t amount = from_big_endian(value.bytes, 32);
@@ -166,7 +171,7 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
         // msg.input_size = data.size();
         vector<evm_log> logs;
         evmc_address new_address;
-        result res = on_create(msg, data.data(), (uint32_t)data.size(), logs, new_address);
+        result res = on_create(EVMC_VERSION, msg.sender, msg, data.data(), (uint32_t)data.size(), logs, new_address);
         print_result(new_address, res.output_data, res.output_size, logs, res.gas_left);
         if (res.status_code != EVMC_SUCCESS) {
             EOSIO_THROW(get_status_error(res.status_code));
@@ -177,7 +182,7 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
         msg.gas = max_gas_limit;
         vector<evm_log> logs;
 
-        auto res = on_call(msg, logs);
+        auto res = on_call(EVMC_VERSION, msg.sender, msg, logs);
         print_result(msg.destination, res.output_data, res.output_size, logs, res.gas_left);
 
         if (res.status_code != EVMC_SUCCESS) {

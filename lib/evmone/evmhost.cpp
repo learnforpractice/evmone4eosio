@@ -3,11 +3,12 @@
 
 #include <eosiolib_legacy/eosiolib.h>
 
-EVMHost::EVMHost(const evmc_tx_context& ctx) noexcept {
+EVMHost::EVMHost(const evmc_tx_context& ctx, evmc_revision _version) noexcept {
     tx_context = ctx;
+    version = _version;
 }
 
-EVMHost::EVMHost(const evmc_address& _origin) noexcept {
+EVMHost::EVMHost(const evmc_address& _origin, evmc_revision _version) noexcept {
     tx_context.block_difficulty = {};
     tx_context.block_coinbase = {};
     tx_context.tx_origin = _origin;
@@ -16,6 +17,8 @@ EVMHost::EVMHost(const evmc_address& _origin) noexcept {
     tx_context.block_gas_limit = max_gas_limit;
     int32_t id = eth_get_chain_id();
     tx_context.chain_id = to_little_endian(id);
+
+    version = _version;
 }
 
 void EVMHost::append_logs(vector<evm_log>& _logs) {
@@ -127,14 +130,14 @@ result EVMHost::call(const evmc_message& msg) {
     evmc_transfer(msg.sender, msg.destination, msg.value);
     if (msg.kind == EVMC_CREATE) {
         evmc_address new_address;
-        result res = on_create(msg, msg.input_data, (uint32_t)msg.input_size, _logs, new_address);
+        result res = on_create(version, tx_context.tx_origin, msg, msg.input_data, (uint32_t)msg.input_size, _logs, new_address);
         if (res.status_code != EVMC_SUCCESS) {
             EOSIO_THROW(get_status_error(res.status_code));
         }
         append_logs(_logs);
         return res;
     } else if (msg.kind == EVMC_CALL || msg.kind == EVMC_DELEGATECALL || msg.kind == EVMC_CALLCODE) {
-        auto res = on_call(msg, _logs);
+        auto res = on_call(version, tx_context.tx_origin, msg, _logs);
         if (res.status_code != EVMC_SUCCESS) {
             EOSIO_THROW(get_status_error(res.status_code));
         }
@@ -173,7 +176,7 @@ void EVMHost::emit_log(const address& addr,
 
 
 
-result on_call(const evmc_message& msg, vector<evm_log>& logs) {
+result on_call(evmc_revision version, evmc_address& origin, const evmc_message& msg, vector<evm_log>& logs) {
     static evmc_address ecrecover_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
     static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
     static evmc_address ripemd160_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03};
@@ -249,9 +252,9 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
         vector<uint8_t> code;
         eth_account_get_code(*(eth_address*)&msg.destination, code);
         if (code.size()) {
-            auto host = EVMHost(msg.sender);
+            auto host = EVMHost(origin, version);
             auto evm = evmc::VM{evmc_create_evmone()};
-            auto ret = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
+            auto ret = evm.execute(host, version, msg, code.data(), code.size());
             logs = host.get_logs();
             //vmelog("++++++++gas left %d\n", ret.gas_left);
             return ret;
@@ -262,7 +265,7 @@ result on_call(const evmc_message& msg, vector<evm_log>& logs) {
     }
 }
 
-result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address) {
+result on_create(evmc_revision version, evmc_address& origin, const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address) {
     uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
 //    EOSIO_ASSERT(nonce >= 0, "on_create:bad nonce!");
@@ -283,9 +286,9 @@ result on_create(const evmc_message& msg, const uint8_t* code, uint32_t code_siz
     evmc_message msg_creation = msg;
     msg_creation.destination = new_address;
 
-    auto host = EVMHost(msg.sender);
+    auto host = EVMHost(origin, version);
     auto evm = evmc::VM{evmc_create_evmone()};
-    auto res = evm.execute(host, EVMC_VERSION, msg_creation, code, code_size);
+    auto res = evm.execute(host, version, msg_creation, code, code_size);
     if (res.status_code != EVMC_SUCCESS) {
         EOSIO_THROW(get_status_error(res.status_code));
     }
