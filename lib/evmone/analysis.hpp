@@ -11,6 +11,7 @@
 #include <array>
 #include <cstdint>
 #include <vector>
+#include <eosiolib_legacy/eosiolib.h>
 
 namespace evmone
 {
@@ -35,7 +36,8 @@ struct evm_stack
     /// The storage allocated for maximum possible number of items.
     /// This is also the pointer to the bottom item.
     /// Items are aligned to 256 bits for better packing in cache lines.
-    alignas(sizeof(uint256)) uint256 storage[limit];
+    //alignas(sizeof(uint256))
+    uint256 storage[limit];
 
     /// Default constructor. Sets the top_item pointer to below the stack bottom.
     [[clang::no_sanitize("bounds")]] evm_stack() noexcept : top_item{storage - 1} {}
