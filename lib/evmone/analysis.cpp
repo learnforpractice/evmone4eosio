@@ -4,7 +4,6 @@
 
 #include "analysis.hpp"
 #include "opcodes_helpers.h"
-#include <cassert>
 
 namespace evmone
 {
@@ -176,7 +175,7 @@ code_analysis analyze(evmc_revision rev, const uint8_t* code, size_t code_size) 
     // FIXME: assert(analysis.instrs.size() <= max_instrs_size);
 
     // Make sure the push_values has not been reallocated. Otherwise iterators are invalid.
-    assert(analysis.push_values.size() <= max_args_storage_size);
+    EOSIO_ASSERT(analysis.push_values.size() <= max_args_storage_size, "push values reallocated!");
 
     return analysis;
 }
