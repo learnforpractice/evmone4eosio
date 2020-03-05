@@ -1426,14 +1426,14 @@ constexpr op_table create_op_table_istanbul() noexcept
 }
 
 constexpr op_table op_tables[] = {
-    // create_op_table_frontier(),           // Frontier
+    create_op_table_frontier(),           // Frontier
     // create_op_table_homestead(),          // Homestead
     // create_op_table_tangerine_whistle(),  // Tangerine Whistle
     // create_op_table_tangerine_whistle(),  // Spurious Dragon
     create_op_table_byzantium(),          // Byzantium
     // create_op_table_constantinople(),     // Constantinople
     // create_op_table_constantinople(),     // Petersburg
-    // create_op_table_istanbul(),           // Istanbul
+    create_op_table_istanbul(),           // Istanbul
     // create_op_table_istanbul(),           // Berlin
 };
 // static_assert(sizeof(op_tables) / sizeof(op_tables[0]) > EVMC_MAX_REVISION,
@@ -1442,7 +1442,15 @@ constexpr op_table op_tables[] = {
 
 EVMC_EXPORT const op_table& get_op_table(evmc_revision rev) noexcept
 {
-    EOSIO_ASSERT(rev == EVMC_BYZANTIUM, "evmc revision not supported");
+    if (rev == EVMC_FRONTIER) {
+        return op_tables[0];
+    } else if (rev == EVMC_BYZANTIUM) {
+        return op_tables[1];
+    }
+    else if (rev == EVMC_ISTANBUL) {
+        return op_tables[2];
+    }
+    EOSIO_ASSERT(false, "evmc revision not supported!");
     return op_tables[0];
 }
 
