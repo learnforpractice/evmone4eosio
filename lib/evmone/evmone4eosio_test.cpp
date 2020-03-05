@@ -15,6 +15,7 @@ extern "C" void evm_execute_test(const uint8_t* tests, uint32_t _size) {
                                 uint256_t,
                                 uint256_t,
                                 uint256_t,
+                                uint256_t,
                                 uint256_t
                                 >(tests, size);
     auto& address = std::get<0>(testexec);
@@ -31,6 +32,7 @@ extern "C" void evm_execute_test(const uint8_t* tests, uint32_t _size) {
     auto& gaslimit = std::get<10>(testexec);
     auto& blocknumber = std::get<11>(testexec);
     auto& timestamp = std::get<12>(testexec);
+    auto& evm_version = std::get<13>(testexec);
 
     EOSIO_ASSERT(address.size() == 20, "bad address");
     EOSIO_ASSERT(caller.size() == 20, "bad address");
@@ -66,9 +68,19 @@ extern "C" void evm_execute_test(const uint8_t* tests, uint32_t _size) {
     int32_t id = eth_get_chain_id();
     tx_context.chain_id = to_little_endian(id);
 
-    auto host = EVMHost(tx_context);
+    evmc_revision version = EVMC_FRONTIER;
+    if (evm_version == 0) {
+        version = EVMC_FRONTIER;
+    } else if (evm_version == 1) {
+        version = EVMC_BYZANTIUM;
+    } else if (evm_version == 2) {
+        version = EVMC_ISTANBUL;
+    }
+
+    auto host = EVMHost(tx_context, version);
     auto evm = evmc::VM{evmc_create_evmone()};
-    auto res = evm.execute(host, EVMC_VERSION, msg, code.data(), code.size());
+
+    auto res = evm.execute(host, version, msg, code.data(), code.size());
     if (res.status_code != EVMC_SUCCESS) {
         EOSIO_THROW(get_status_error(res.status_code));
     }
