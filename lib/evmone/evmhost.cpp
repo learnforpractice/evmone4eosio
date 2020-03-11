@@ -112,15 +112,21 @@ size_t EVMHost::copy_code(const address& addr,
 }
 
 void EVMHost::selfdestruct(const address& addr, const address& beneficiary) {
+    uint64_t creator = eth_account_find_creator_by_address(ETH_ADDRESS(addr));
+    require_auth(creator);
     auto _balance_addr = eth_account_get_balance(ETH_ADDRESS(addr));
     auto _balance_beneficiary = eth_account_get_balance(ETH_ADDRESS(beneficiary));
     uint256_t& balance_addr = *(uint256_t*)&_balance_addr;
     uint256_t& balance_beneficiary = *(uint256_t*)&_balance_beneficiary;
 
     balance_beneficiary += balance_addr;
+    if (balance_beneficiary < balance_addr) {
+        EOSIO_THROW("balance_beneficiary amount overflow!");
+    }
+
     eth_uint256 zero{};
-    eth_account_set_balance(ETH_ADDRESS(addr), zero);
-    eth_account_set_balance(ETH_ADDRESS(beneficiary), _balance_beneficiary);
+    eth_account_set_balance(ETH_ADDRESS(addr), zero, creator);
+    eth_account_set_balance(ETH_ADDRESS(beneficiary), _balance_beneficiary, 0);
     eth_account_clear_code(ETH_ADDRESS(addr));
 }
 

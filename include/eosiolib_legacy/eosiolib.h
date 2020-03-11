@@ -4,6 +4,7 @@
 #include "system.h"
 #include "crypto.h"
 #include "print.h"
+#include "action.h"
 #include "transaction.h"
 
 #define EOSIO_THROW(msg) eosio_assert(false, msg)

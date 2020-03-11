@@ -24,6 +24,7 @@
 void evmc_transfer(const evmc_address& sender, const evmc_address& receiver, const evmc_uint256be& value) {
 
     uint256_t amount = from_big_endian(value.bytes, 32);
+    uint64_t creator = eth_account_find_creator_by_address(ETH_ADDRESS(sender));
 
     // EOSIO_ASSERT(amount <= max_amount && amount >= 0, "call:bad transfer value");
     if (amount == 0) {
@@ -41,8 +42,8 @@ void evmc_transfer(const evmc_address& sender, const evmc_address& receiver, con
         EOSIO_THROW("receiver amount overflow!");
     }
 
-    eth_account_set_balance(*(eth_address*)&sender, _sender_amount);
-    eth_account_set_balance(*(eth_address*)&receiver, _receiver_amount);
+    eth_account_set_balance(*(eth_address*)&sender, _sender_amount, creator);
+    eth_account_set_balance(*(eth_address*)&receiver, _receiver_amount, 0);
 }
 
 extern "C" EVMC_EXPORT int evm_get_account_id(const char* account, size_t account_size, const char* arbitrary_string, size_t arbitrary_string_size, char* hash160, size_t hash_size) {
