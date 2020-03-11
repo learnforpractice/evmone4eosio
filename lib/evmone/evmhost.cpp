@@ -127,7 +127,6 @@ void EVMHost::selfdestruct(const address& addr, const address& beneficiary) {
 
 result EVMHost::call(const evmc_message& msg) {
     vector<evm_log> _logs;
-    evmc_transfer(msg.sender, msg.destination, msg.value);
     if (msg.kind == EVMC_CREATE) {
         evmc_address new_address;
         result res = on_create(version, tx_context.tx_origin, msg, msg.input_data, (uint32_t)msg.input_size, _logs, new_address);
@@ -183,6 +182,8 @@ result on_call(evmc_revision version, evmc_address& origin, const evmc_message& 
     static evmc_address identity_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04};
 //DELEGATECALL
     evmc_result res{};
+
+    evmc_transfer(msg.sender, msg.destination, msg.value);
 
     uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
@@ -285,6 +286,8 @@ result on_create(evmc_revision version, evmc_address& origin, const evmc_message
 
     evmc_message msg_creation = msg;
     msg_creation.destination = new_address;
+ 
+    evmc_transfer(msg_creation.sender, msg_creation.destination, msg.value);
 
     auto host = EVMHost(origin, version);
     auto evm = evmc::VM{evmc_create_evmone()};

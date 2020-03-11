@@ -164,7 +164,7 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
     //vmelog("+++++++++++++++msg.kind %d\n", msg.kind);
     auto data = std::get<5>(decoded_trx);
 
-    evmc_transfer(msg.sender, msg.destination, msg.value);
+
 
     if (msg.kind == EVMC_CREATE) {
         // msg.input_data = data.data();
