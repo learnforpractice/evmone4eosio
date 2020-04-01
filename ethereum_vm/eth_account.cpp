@@ -227,7 +227,11 @@ uint64_t eth_account_get_info(eth_address& address, uint64_t* creator, int64_t* 
         *nonce = idx->nonce;
     }
     if (amount) {
+#ifdef ETH_BALANCE_256BIT
         memcpy(amount->bytes, idx->balance.data(), 32);
+#else
+        *((int64_t*)&amount) = idx->balance.amount;
+#endif
     }
     if (creator) {
         *creator = idx->creator;
@@ -281,6 +285,7 @@ bool eth_account_set(eth_address& address, const ethaccount& account) {
 }
 
 eth_uint256 eth_account_get_balance(eth_address& address) {
+    eth_uint256 balance{};
     uint64_t code = current_receiver().value;
     uint64_t scope = code;
 
@@ -294,9 +299,13 @@ eth_uint256 eth_account_get_balance(eth_address& address) {
     auto itr = idx_sec.find(_address);
 //    check(itr != idx_sec.end(), "get_balance:address does not created!");
     if (itr != idx_sec.end()) {
-        return *(eth_uint256*)&itr->balance;
+#ifdef ETH_BALANCE_256BIT
+        balance = *(eth_uint256*)&itr->balance;
+#else
+        *((int64_t*)&balance) = itr->balance.amount;
+#endif
     }
-    return {};
+    return balance;
 }
 
 bool eth_account_set_balance(eth_address& address, eth_uint256& amount, uint64_t payer) {
@@ -313,7 +322,12 @@ bool eth_account_set_balance(eth_address& address, eth_uint256& amount, uint64_t
     check(itr != idx_sec.end(), "set_balance:address does not created");
     auto itr2 = mytable.find(itr->index);
     mytable.modify( itr2, name(payer), [&]( auto& row ) {
+#ifdef ETH_BALANCE_256BIT
         memcpy(row.balance.data(), amount.bytes, 32);
+#else
+        row.balance.amount = ((int64_t*)&amount)[0];
+        row.balance.symbol = symbol(ETH_ASSET_SYMBOL, 4);
+#endif
     });
     return true;
 }

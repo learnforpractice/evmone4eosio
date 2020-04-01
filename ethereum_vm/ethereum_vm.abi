@@ -30,7 +30,7 @@
         {"name":"creator", "type":"name"},
         {"name":"nonce", "type":"uint64"},
         {"name":"address", "type":"checksum160"},
-        {"name":"balance", "type":"checksum256"},
+        {"name":"balance", "type":"asset"},
        ]
     },{
       "name": "accountstate",

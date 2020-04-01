@@ -64,7 +64,12 @@ struct [[eosio::table]] ethaccount {
     uint64_t                        creator;
     int64_t                         nonce;
     eth_address                     address;
+#ifdef ETH_BALANCE_256BIT
     std::array<uint8_t, 32>         balance;
+#else
+    asset                           balance;
+    int128_t                        pads;
+#endif
     uint64_t primary_key() const { return index; }
 
     checksum256 by_address() const {
@@ -76,8 +81,11 @@ struct [[eosio::table]] ethaccount {
     uint64_t by_creator() const {
         return creator;
     }
-
+#ifdef ETH_BALANCE_256BIT
     EOSLIB_SERIALIZE( ethaccount, (index)(creator)(nonce)(address)(balance) )
+#else
+    EOSLIB_SERIALIZE( ethaccount, (index)(creator)(nonce)(address)(balance)(pads) )
+#endif
 };
 
 struct [[eosio::table]] account_state {
