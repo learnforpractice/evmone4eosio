@@ -1,3 +1,6 @@
 /build
 /cmake-build-*
 /.idea
+.ipynb_checkpoints
+*.wallet
+__pycache__
