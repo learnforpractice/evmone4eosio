@@ -98,6 +98,10 @@ def gen_eth_address_from_eos_public_key(pub_key):
     eth_address = eth_utils.keccak(pub_key[:-4])[12:]
     return eth_address.hex()
 
+def public_key_to_hex(pub_key):
+    pub_key = base58.b58decode(pub_key[3:])
+    return pub_key[:-4].hex()
+
 def get_last_trx_result():
     return g_last_trx_ret
 

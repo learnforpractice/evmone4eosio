@@ -169,7 +169,9 @@ def init_testcase():
 
     shared.main_eth_address = eth.get_binded_address(main_account)
     if not shared.main_eth_address:
-        args = {'account': main_account, 'text': 'hello,world'}
+        #EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV is the active key of main_account
+        text = evm.public_key_to_hex('EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV')
+        args = {'account': main_account, 'text': text}
         try:
             r = eosapi.push_action(main_account, 'create', args, {main_account:'active'})
             shared.main_eth_address = r['processed']['action_traces'][0]['console']
@@ -656,7 +658,7 @@ class EVMTestCase(BaseTestCase):
             'nonce': eth.get_nonce(eth_address),
             'gasPrice': 2,
             'gas': 3,
-            'to':  bytes.fromhex(shared.main_eth_address),
+            'to':  bytes.fromhex(shared.eth_address),
             'value': 1000,
             'data': b'123'
         }
@@ -665,8 +667,7 @@ class EVMTestCase(BaseTestCase):
         balance = eth.get_balance(eth_address)
         main_balance = eth.get_balance(shared.main_eth_address)
 
-        eosapi.push_action(main_account, 'raw', {'trx':encoded_trx.hex(), 'sender':''}, {'helloworld13':'active'})
-
+        eosapi.push_action(main_account, 'raw', {'trx':encoded_trx.hex(), 'sender': shared.main_eth_address}, {'helloworld13':'active'})
         balance2 = eth.get_balance(eth_address)
         main_balance2 = eth.get_balance(shared.main_eth_address)
 

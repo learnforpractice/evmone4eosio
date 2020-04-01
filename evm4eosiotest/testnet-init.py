@@ -138,7 +138,7 @@ contracts_path = os.path.dirname(__file__)
 contracts_path = os.path.join(contracts_path, 'contracts')
 
 if not eosapi.get_raw_code_and_abi('eosio')['wasm']:
-    deploy_contract('eosio', 'eosio.bios', contracts_path)
+    deploy_contract('eosio', 'eosio.bios')
 
 feature_digests = ['ad9e3d8f650687709fd68f4b90b41f7d825a365b02c23a636cef88ac2ac00c43',#RESTRICT_ACTION_TO_SELF
             'ef43112c6543b88db2283a2e077278c315ae2c84719a8b25f25cc88565fbea99', #REPLACE_DEFERRED

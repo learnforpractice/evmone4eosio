@@ -582,3 +582,7 @@ void eth_account_clear_all() {
         address_map_table.erase(itr);
     }
 }
+
+string n2s(uint64_t value) {
+    return name(value).to_string();
+}

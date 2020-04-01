@@ -130,7 +130,14 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
             int pub_key_size = ::recover_key((checksum256*)hash256.bytes, (const char *)sign, 66, (char *)pub_key, 34);
             EOSIO_ASSERT(pub_key_size==34, "bad pub key size");
 //            printhex(pub_key, 34);prints("\n");
-            hash256 = ethash::keccak256(pub_key+1, 33);
+
+            EOSIO_ASSERT(sender_address_size == 20, "evm_execute:bad sender size!");
+            uint64_t creator = eth_account_find_creator_by_address(*(eth_address*)sender_address);
+            string _name = n2s(creator);
+            string _pub_key = to_hex(pub_key+1, 33);
+
+            auto id = rlp::encode(_name, _pub_key);
+            hash256 = ethash::keccak256(id.data(), id.size());
             memcpy(msg.sender.bytes, hash256.bytes + 12, 20);
 //            printhex(hash256.bytes, 32);prints("\n");
         } else {//sign with eth private key

@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <vector>
 #include <array>
+#include <string>
+
 /*
 #define ALIGNED(X) __attribute__ ((aligned (16))) X
 struct ALIGNED(eth_address) {
@@ -80,5 +82,7 @@ bool    eth_account_set_value(eth_address& address, key256& key, value256& value
 bool    eth_account_clear_value(eth_address& address, key256& key);
 
 void eth_account_clear_all();
+
+string n2s(uint64_t value);
 
 #define EVM_API __attribute__ ((visibility ("default")))
