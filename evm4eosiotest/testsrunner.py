@@ -207,8 +207,8 @@ def run_test_in_file(json_file):
 
 def init_testcase():
     try:
-        abi_file = './contracts/ethereum_vm/evmtest.abi'
-        wasm_file = './contracts/ethereum_vm/evmtest.wasm'
+        abi_file = '../build/lib/evmone/contracts/evmtest.abi'
+        wasm_file = '../build/lib/evmone/contracts/evmtest.wasm'
 
         vm_abi = open(abi_file, 'rb').read()
         from pyeoskit import _hello
