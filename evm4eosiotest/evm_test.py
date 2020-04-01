@@ -392,9 +392,69 @@ class EVMTestCase(BaseTestCase):
         assert ram_usage_test_account == eosapi.get_account(test_account)['ram_usage']
 
     @on_test
-    def test_transfer_eth_to_not_created_address(self):
+    def test_correct_sender(self):
         evm.set_current_account('helloworld12')
         eosapi.transfer('helloworld12', 'helloworld11', 1.0, 'hello')
+        transaction = {
+                'from':shared.eth_address,
+                'to': w3.toChecksumAddress(shared.main_eth_address),
+                'value': 1000,
+                'gas': 2000000,
+                'gasPrice': 0,
+                'nonce': 0,
+                'chainId': 1
+        }
+        w3.eth.sendTransaction(transaction)
+        evm.set_current_account('')
+
+    @on_test
+    def test_incorrect_sender(self):
+        evm.set_current_account('helloworld12')
+        eosapi.transfer('helloworld12', 'helloworld11', 1.0, 'hello1')
+        transaction = {
+                'from':'0xb654a7a81e0aeb7721a22f27a04ecf5af0e8a9a3',
+                'to': '0xF0109fC8DF283027b6285cc889F5aA624EaC1F55',
+                'value': 2001,
+                'gas': 2000000,
+                'gasPrice': 0,
+                'nonce': 0,
+                'chainId': 1
+        }
+        try:
+            w3.eth.sendTransaction(transaction)
+            assert False, 'code should not go here!'
+        except Exception as e:
+#            logger.info(e)
+            e = json.loads(e.response)
+            assert e['error']['details'][0]['message'] == "assertion failure with message: eth address does not exists!"
+        evm.set_current_account('')
+
+    @on_test
+    def test_incorrect_sender_authorization(self):
+        evm.set_current_account('helloworld11')
+        eosapi.transfer('helloworld12', 'helloworld11', 1.0, 'hello2')
+        transaction = {
+                'from':shared.eth_address,
+                'to': w3.toChecksumAddress(shared.main_eth_address),
+                'value': 3003,
+                'gas': 2000000,
+                'gasPrice': 0,
+                'nonce': 0,
+                'chainId': 1
+        }
+        try:
+            w3.eth.sendTransaction(transaction)
+            assert False, 'code should not go here!'
+        except Exception as e:
+#            logger.info(e)
+            e = json.loads(e.response)
+            assert e['error']['details'][0]['message'] == "missing authority of helloworld12"
+        evm.set_current_account('')
+
+    @on_test
+    def test_transfer_eth_to_not_created_address(self):
+        evm.set_current_account('helloworld12')
+        eosapi.transfer('helloworld12', 'helloworld11', 1.0, 'hello3')
         transaction = {
                 'from':shared.eth_address,
                 'to': '0xF0109fC8DF283027b6285cc889F5aA624EaC1F55',

@@ -414,6 +414,7 @@ class Eth(object):
         row = self.get_address_info(address)
         if row:
             return row['nonce']
+        return 0
 
 #table account_state
 # uint64_t code = current_receiver().value;

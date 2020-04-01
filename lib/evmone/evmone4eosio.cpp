@@ -99,6 +99,9 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
     if (_r == 0 && _s == 0) {
         EOSIO_ASSERT(sender_address_size == 20, "evm_execute:bad sender size!");
         memcpy(msg.sender.bytes, sender_address, 20);
+        eth_account_check_address(*(eth_address*)&msg.sender);
+        uint64_t creator = eth_account_find_creator_by_address(ETH_ADDRESS(msg.sender));
+        require_auth(creator);
         chain_id = (int32_t)v;
         check_chain_id(chain_id);
     } else {
@@ -130,7 +133,6 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
             hash256 = ethash::keccak256(pub_key+1, 33);
             memcpy(msg.sender.bytes, hash256.bytes + 12, 20);
 //            printhex(hash256.bytes, 32);prints("\n");
-            eth_account_check_address(*(eth_address*)&msg.sender);
         } else {//sign with eth private key
             check_chain_id(chain_id);
             uint8_t sig[65];
@@ -144,8 +146,8 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
             evm_recover_key(sig, 65, (uint8_t *)&hash256, 32, pub_key, 65);
             auto addr = ethash::keccak256(pub_key+1, 64);
             memcpy(msg.sender.bytes, addr.bytes + 12, 20);
-            eth_account_check_address(*(eth_address*)&msg.sender);
         }
+        eth_account_check_address(*(eth_address*)&msg.sender);
     }
 
     uint64_t nonce = 0;
@@ -180,7 +182,6 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
     } else if (msg.kind == EVMC_CALL) {
         msg.input_data = data.data();
         msg.input_size = data.size();
-        msg.gas = max_gas_limit;
         vector<evm_log> logs;
 
         auto res = on_call(EVMC_VERSION, msg.sender, msg, logs);
