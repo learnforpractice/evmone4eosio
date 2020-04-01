@@ -1,0 +1,216 @@
+{
+   "version": "eosio::abi/1.0",
+   "types": [],
+  "structs": [
+    {
+      "name": "testexec",
+      "base": "",
+      "fields": [
+        {"name":"data",       "type":"bytes"},
+        {"name":"counter",   "type":"uint64"}
+       ]
+    },
+    {
+      "name": "testinfo",
+      "base": "",
+      "fields": [
+        {"name":"address", "type":"checksum160"},
+        {"name":"nonce",   "type":"uint64"},
+        {"name":"balance", "type":"checksum256"},
+        {"name":"code",    "type":"bytes"},
+        {"name":"storage", "type":"checksum256[]"},
+        {"name":"counter", "type":"uint64"},
+       ]
+    },
+    {
+      "name": "ethaccount",
+      "base": "",
+      "fields": [
+        {"name":"index", "type":"uint64"},
+        {"name":"creator", "type":"name"},
+        {"name":"nonce", "type":"uint64"},
+        {"name":"address", "type":"checksum160"},
+        {"name":"balance", "type":"checksum256"},
+       ]
+    },{
+      "name": "accountstate",
+      "base": "",
+      "fields": [
+        {"name":"index", "type":"uint64"},
+        {"name":"key",   "type":"bytes"},
+        {"name":"value", "type":"bytes"}
+       ]
+    },{
+      "name": "ethcode",
+      "base": "",
+      "fields": [
+        {"name":"index",   "type":"uint64"},
+        {"name":"address", "type":"checksum160"},
+        {"name":"code",    "type":"bytes"}
+       ]
+    },{
+      "name": "ethcodecache",
+      "base": "",
+      "fields": [
+        {"name":"index",   "type":"uint64"},
+        {"name":"address", "type":"checksum160"},
+        {"name":"code",    "type":"bytes"}
+        {"name":"version", "type":"int64"}
+       ]
+    },{
+      "name": "global",
+      "base": "",
+      "fields": [
+        {"name":"count",   "type":"uint64"},
+        {"name":"chainid", "type":"int32"}
+       ]
+    },{
+      "name": "keycounter",
+      "base": "",
+      "fields": [
+        {"name":"count",   "type":"uint64"},
+       ]
+    },{
+      "name": "addressmap",
+      "base": "",
+      "fields": [
+        {"name":"creator",   "type":"name"},
+        {"name":"address",   "type":"checksum160"}
+       ]
+    },{
+      "name": "create",
+      "base": "",
+      "fields": [
+        {"name":"account", "type":"name"},
+        {"name":"text", "type":"string"},
+       ]
+    },{
+      "name": "bind",
+      "base": "",
+      "fields": [
+        {"name":"account", "type":"name"},
+        {"name":"address", "type":"checksum160"}
+       ]
+    },{
+      "name": "ethraw",
+      "base": "",
+      "fields": [
+        {"name":"trx", "type":"bytes"},
+        {"name":"sender", "type":"bytes"}
+       ]
+    },{
+      "name": "addrinfo",
+      "base": "",
+      "fields": [
+        {"name":"nonce", "type":"uint64"},
+        {"name":"balance", "type":"checksum256"},
+       ]
+    },{
+      "name": "getaddrinfo",
+      "base": "",
+      "fields": [
+        {"name":"address", "type":"checksum160"}
+       ]
+    },{
+      "name": "withdraw",
+      "base": "",
+      "fields": [
+        {"name":"account", "type":"name"},
+        {"name":"amount", "type":"asset"}
+       ]
+    },{
+      "name": "setchainid",
+      "base": "",
+      "fields": [
+        {"name":"chainid", "type":"int32"}
+       ]
+    }
+  ],
+  "actions": [
+    {
+      "name": "testexec",
+      "type": "testexec",
+      "ricardian_contract": ""
+    },
+    {
+      "name": "setaddrinfo",
+      "type": "testinfo",
+      "ricardian_contract": ""
+    },
+    {
+      "name": "create",
+      "type": "create",
+      "ricardian_contract": ""
+    },
+    {
+      "name": "bind",
+      "type": "bind",
+      "ricardian_contract": ""
+    },{
+      "name": "raw",
+      "type": "ethraw",
+      "ricardian_contract": ""
+    },{
+      "name": "getaddrinfo",
+      "type": "getaddrinfo",
+      "ricardian_contract": ""
+    },{
+      "name": "addrinfo",
+      "type": "addrinfo",
+      "ricardian_contract": ""
+    },{
+      "name": "withdraw",
+      "type": "withdraw",
+      "ricardian_contract": ""
+    },{
+      "name": "setchainid",
+      "type": "setchainid",
+      "ricardian_contract": ""
+    }
+  ],
+  "tables": [
+      {
+          "name": "ethaccount",
+          "type": "ethaccount",
+          "index_type": "i64",
+          "key_names": [],
+          "key_types": []
+      },{
+          "name": "accountstate",
+          "type": "accountstate",
+          "index_type": "i64",
+          "key_names": [],
+          "key_types": []
+      },{
+          "name": "ethcode",
+          "type": "ethcode",
+          "index_type": "i64",
+          "key_names": [],
+          "key_types": []
+      },{
+          "name": "ethcodecache",
+          "type": "ethcodecache",
+          "index_type": "i64",
+          "key_names": [],
+          "key_types": []
+      },{
+          "name": "global",
+          "type": "global",
+          "index_type": "i64",
+          "key_names": [],
+          "key_types": []
+      },{
+          "name": "global2",
+          "type": "keycounter",
+          "index_type": "i64",
+          "key_names": [],
+          "key_types": []
+      },{
+          "name": "addressmap",
+          "type": "addressmap",
+          "index_type": "i64",
+          "key_names": [],
+          "key_types": []
+      }
+  ]
+}
