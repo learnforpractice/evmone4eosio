@@ -53,10 +53,10 @@ key2 = 'EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV'
 def deploy_contract(account_name, contract_name, contracts_path=None):
     if not contracts_path:
         contracts_path = os.path.dirname(__file__)
-        contracts_path = os.path.join(contracts_path, 'contracts')
+        contracts_path = os.path.join(contracts_path, f'contracts/{contract_name}')
 
-    code_path = os.path.join(contracts_path, f'{contract_name}/{contract_name}.wasm')
-    abi_path = os.path.join(contracts_path, f'{contract_name}/{contract_name}.abi')
+    code_path = os.path.join(contracts_path, f'{contract_name}.wasm')
+    abi_path = os.path.join(contracts_path, f'{contract_name}.abi')
 
     logger.info(code_path)
     code = open(code_path, 'rb').read()
@@ -193,7 +193,7 @@ for account in  ('helloworld11', 'helloworld12', 'helloworld13', 'helloworld14',
     util.buyrambytes('eosio', account, 5*1024*1024)
     util.dbw('eosio', account, 1.0, 1000)
 
-if deploy_contract('helloworld11', 'ethereum_vm'):
+if deploy_contract('helloworld11', 'ethereum_vm', '../build/lib/evmone/contracts'):
     args = {'chainid': 1}
     try:
         r = eosapi.push_action('helloworld11', 'setchainid', args, {'helloworld11':'active'})
