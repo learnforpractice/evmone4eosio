@@ -130,21 +130,21 @@ def sign_transaction_dict_with_eos_key(transaction_dict, chain_id, eos_pub_key):
     unsigned_transaction = serializable_unsigned_transaction_from_dict(transaction_dict)
 
     transaction_hash = unsigned_transaction.hash()
-    print('transaction hash:', transaction_hash)
+#    print('transaction hash:', transaction_hash)
     sign = wallet.sign_digest(transaction_hash, eos_pub_key)
     sign = base58.b58decode(sign[7:])
-    print(sign)
+#    print(sign)
     v = to_eth_v(0, chain_id + (sign[0]<<24)+0x800000)
 
     sign = sign[1:-4]    
 #    v = chain_id + (sign[0]<<24)+0x800000
-    print('+++v:', v)
+#    print('+++v:', v)
     r = int.from_bytes(sign[:32], 'big')
     s = int.from_bytes(sign[32:32+32], 'big')
 
     # serialize transaction with rlp
     encoded_transaction = encode_transaction(unsigned_transaction, vrs=(v, r, s))
-    print("++++v, r, s:", v, r, s)
+#    print("++++v, r, s:", v, r, s)
     return encoded_transaction
 
 def pack_transaction(trx):
@@ -169,10 +169,10 @@ def publish_evm_code(transaction, eos_pub_key = None):
     if sender[:2] == '0x':
         sender = sender[2:]
     sender = sender.lower()
-    logger.info(sender)
+#    logger.info(sender)
     a = EthAccount('helloworld11', sender)
     nonce = a.get_nonce()
-    logger.info(('+++++++++sender:', sender, nonce))
+#    logger.info(('+++++++++sender:', sender, nonce))
     assert nonce >= 0
 
     transaction['nonce'] = nonce
@@ -209,7 +209,7 @@ def publish_evm_code(transaction, eos_pub_key = None):
     g_last_trx_ret = ret
     logs = ret['processed']['action_traces'][0]['console']
     # logger.info(logs)
-    logger.info(('++++elapsed:', ret['processed']['elapsed']))
+#    logger.info(('++++elapsed:', ret['processed']['elapsed']))
     try:
         logs = bytes.fromhex(logs)
         logs = rlp.decode(logs)

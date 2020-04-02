@@ -317,11 +317,11 @@ class EVMTestCase(BaseTestCase):
         args = {'from': shared.eth_address,'to': checksum_contract_address}
 
         logs = Greeter.functions.setValue(0xaabbccddee).transact(args)
-        logger.info((logs, keccak(b'onSetValue(uint256)')))
-        logger.info(logs[2][0])
+#        logger.info((logs, keccak(b'onSetValue(uint256)')))
+#        logger.info(logs[2][0])
         assert logs[2][0][1][0] == keccak(b'onSetValue(uint256)')
         evm.format_log(logs)
-        logger.info(logs)
+#        logger.info(logs)
 
     @on_test
     def test_storage(self):
@@ -510,7 +510,7 @@ class EVMTestCase(BaseTestCase):
         
         self.deposit(test_account, 1.0)
 
-        logger.info((shared.eth_address, "balance", eth.get_balance(shared.eth_address)))
+#        logger.info((shared.eth_address, "balance", eth.get_balance(shared.eth_address)))
         self.transfer_eth(shared.eth_address, shared.contract_address, 1000)
 
         balance1 = eth.get_balance(shared.eth_address)
@@ -597,7 +597,7 @@ class EVMTestCase(BaseTestCase):
         args = {'from': _from, 'to': _to}
 
         logs = Greeter.functions.ripemd160Test(b'a message').transact(args)
-        logger.info(logs)
+#        logger.info(logs)
 
         import hashlib
         h = hashlib.new('ripemd160')
@@ -615,13 +615,13 @@ class EVMTestCase(BaseTestCase):
         args = {'from': _from, 'to': _to}
 
         logs = Greeter.functions.sha256Test(b'another message').transact(args)
-        logger.info(logs)
+#        logger.info(logs)
 
         import hashlib
         h = hashlib.sha256()
         h.update(b'another message')
         digest = h.digest()
-        logger.info((digest))
+#        logger.info((digest))
         assert logs[1] == digest
 
     @on_test
@@ -670,7 +670,7 @@ class EVMTestCase(BaseTestCase):
     def test_sign_with_eos_private_key(self):
         pub_key = 'EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV'
         eth_address = evm.create_eth_address(pub_key, 'helloworld13')
-        logger.info(eth_address)
+#        logger.info(eth_address)
         binded_address = eth.get_binded_address('helloworld13')
         if not binded_address:
             name = 'helloworld13'
@@ -770,10 +770,10 @@ class EVMTestCase2(BaseTestCase):
         _to = w3.toChecksumAddress(shared.tester_contract_address)
         args = {'from': _from, 'to': _to, 'value': 10000}
         logs = Tester.functions.transfer().transact(args)
-        logger.info(logs)
+#        logger.info(logs)
         balance11 = eth.get_balance(shared.eth_address)
         balance21 = eth.get_balance(shared.tester_contract_address)
-        logger.info((balance11, balance21))
+#        logger.info((balance11, balance21))
         args = {'from': _from, 'to': _to}
         logs = Tester.functions.testSuicide().transact(args)
 
