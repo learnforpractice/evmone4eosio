@@ -5,20 +5,20 @@
 > * [optionally,] a unique associated EOSIO account
 
 relative code:
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/table_struct.hpp#L62
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/table_struct.hpp#L62
 
 
 # 2. The Application MUST persist an “Account State Table” per account, if it would not be empty, consisting of:
 > * A unique 256bit key
 > * A 256bit value
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/table_struct.hpp#L91
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/table_struct.hpp#L91
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/eth_account.cpp#L480
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/eth_account.cpp#L480
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/eth_account.cpp#L450
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/eth_account.cpp#L450
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/eth_account.cpp#L521
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/eth_account.cpp#L521
 
 
 
@@ -26,13 +26,13 @@ https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum
 EVM bytecode associated with account
 
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/table_struct.hpp#L113
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/table_struct.hpp#L113
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/eth_account.cpp#L357
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/eth_account.cpp#L357
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/eth_account.cpp#L335
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/eth_account.cpp#L335
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/eth_account.cpp#L387
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/eth_account.cpp#L387
 
 
 
@@ -40,32 +40,32 @@ https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum
 
 1. There will be no effective BLOCK gas limit. Instructions that return a BLOCK limit should return a  sufficiently large supply
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmhost.cpp#L17
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmhost.cpp#L17
 
 2. The TRANSACTION gas limit will be enforced
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L70
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L70
 
 3. The sender WILL NOT be billed for the gas, the gas price MAY therefore be locked at some suitable value.
 
 gas price is set to 0
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmhost.cpp#L12
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmhost.cpp#L12
 
 4. All other gas mechanics/instructions should be maintained
 
 5. Block number and timestamp should represent the native EOSIO block number and time
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmhost.cpp#L15
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmhost.cpp#L15
 
 
 6. Block hash, coinbase, and difficulty should return static values
 
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmhost.cpp#L162
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmhost.cpp#L162
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmhost.cpp#L13
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmhost.cpp#L13
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmhost.cpp#L12
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmhost.cpp#L12
 
 
 
@@ -93,7 +93,7 @@ If the “R” and “S” values of the transaction are 0:
 
 code:
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L61
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L61
 
 
 test case:
@@ -126,7 +126,7 @@ A transaction containing this action must fail if an Account Table Entry exists 
 
 code:
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/ethereum_vm.cpp#L141
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/ethereum_vm.cpp#L141
 
 
 # 7. The Application MUST respond to EOSIO token transfers:
@@ -137,7 +137,7 @@ https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum
 
 code:
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/ethereum_vm.cpp#L224
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/ethereum_vm.cpp#L224
 
 
 # 8. The Application MUST implement an action named “withdraw”:
@@ -152,7 +152,7 @@ Which results in:
 A transaction containing this action must fail if it is not authorized by the EOSIO account listed in the inputs OR if such a withdrawal would leave the Account Table Entry’s balance negative.
 
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/ethereum_vm/ethereum_vm.cpp#L177
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/ethereum_vm.cpp#L177
 
 
 # 9. The Application MAY implement additional actions for maintenance or transaction processing so long as they do not violate the key principles of the execution model above.
@@ -163,9 +163,9 @@ This MAY be done at compile time
 This MAY be done with an additional initialization action
 
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L106
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L106
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L122
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L122
 
-https://github.com/learnforpractice/evmone4eosio-private/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L144
+https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L144
 
