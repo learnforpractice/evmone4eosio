@@ -96,7 +96,7 @@ code:
 https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L61
 
 
-test case:
+test cases:
 ```
 python3.7 evm_test.py EVMTestCase.test_sign_with_eos_private_key
 
@@ -140,6 +140,12 @@ code:
 https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/ethereum_vm.cpp#L224
 
 
+test case:
+
+```
+python3.7 evm_test.py EVMTestCase.test_deposit
+```
+
 # 8. The Application MUST implement an action named “withdraw”:
 Whose inputs are:
 > * An EOSIO account
@@ -154,6 +160,11 @@ A transaction containing this action must fail if it is not authorized by the EO
 
 https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/ethereum_vm/ethereum_vm.cpp#L177
 
+test case:
+
+```
+python3.7 evm_test.py EVMTestCase.test_withdraw
+```
 
 # 9. The Application MAY implement additional actions for maintenance or transaction processing so long as they do not violate the key principles of the execution model above.
 
@@ -169,3 +180,9 @@ https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmon
 
 https://github.com/learnforpractice/evmone4eosio/blob/evm4eosio/lib/evmone/evmone4eosio.cpp#L144
 
+run test case:
+
+```
+python3.7 evm_test.py EVMTestCase.test_check_chain_id
+
+```
