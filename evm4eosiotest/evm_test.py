@@ -374,7 +374,7 @@ class EVMTestCase(BaseTestCase):
 
         #test storage
         logs = Greeter.functions.getValue().transact(args)
-        logger.info(logs)
+#        logger.info(logs)
         assert int.from_bytes(logs[1], 'big') == 0xaabbccddee
 
     @on_test
@@ -415,7 +415,7 @@ class EVMTestCase(BaseTestCase):
                 'chainId': 1
         }
         r = w3.eth.sendTransaction(transaction)
-        print(r)
+#        print(r)
         logger.info(shared.main_eth_address)
         logger.info((balance1, eth.get_balance(shared.eth_address)))
 
@@ -718,11 +718,11 @@ class EVMTestCase(BaseTestCase):
 
         base58_sign = wallet.sign_digest(h, pub_key)
         sign = base58.b58decode(base58_sign[7:])
-        print(sign)
+#        print(sign)
         v = sign[0]
         sign = sign[1:-4]
     #    v = chain_id + (sign[0]<<24)+0x800000
-        print('+++v:', v)
+#        print('+++v:', v)
         
         r = sign[:32]
         s = sign[32:32+32]
