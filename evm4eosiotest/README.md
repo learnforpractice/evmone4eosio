@@ -92,3 +92,13 @@ modify http://127.0.0.1:8888 to the right url if nodeos's http server is not lis
 python3.7 testsrunner.py -- --http-server-address http://127.0.0.1:8888 -d VMTests -v 0
 ```
 
+Notes:
+
+```
+There are 609 evm tests in VMTests directory, 123 vm tests will throw exceptions from evm as expected, other tests will not throw exceptions as pass the result checking.
+
+Refer to test script in testsrunner.py for how it works.
+
+```
+
+
