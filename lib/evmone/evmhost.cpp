@@ -17,7 +17,7 @@ EVMHost::EVMHost(const evmc_address& _origin, evmc_revision _version) noexcept {
     tx_context.block_gas_limit = max_gas_limit;
     int32_t id = eth_get_chain_id();
     tx_context.chain_id = to_little_endian(id);
-
+    tx_context.tx_gas_price = {};
     version = _version;
 }
 
@@ -45,23 +45,21 @@ evmc_storage_status EVMHost::set_storage(const address& addr,
                                         const bytes32& key,
                                         const bytes32& value) {
     bytes32 old_value{};
-    bool value_exists = eth_account_get_value(*(eth_address*)&addr, *(key256*)&key, *(value256*)&old_value);
+    bool old_value_exists = eth_account_get_value(*(eth_address*)&addr, *(key256*)&key, *(value256*)&old_value);
 
-    if (value == old_value) {
-        return EVMC_STORAGE_UNCHANGED;
+    if (!old_value_exists && value != zero_bytes32) {
+        eth_account_set_value(*(eth_address*)&addr, *(key256*)&key, *(value256*)&value);
+        return EVMC_STORAGE_ADDED;
+    } else if (old_value_exists && value == zero_bytes32) {
+        eth_account_clear_value(*(eth_address*)&addr, *(key256*)&key);
+        return EVMC_STORAGE_DELETED;
     } else {
-        if (value == zero_bytes32) {
-            eth_account_clear_value(*(eth_address*)&addr, *(key256*)&key);
-            return EVMC_STORAGE_DELETED;
-        } else {
+        if (old_value != value) {
             eth_account_set_value(*(eth_address*)&addr, *(key256*)&key, *(value256*)&value);
-            if (value_exists) {
-                return EVMC_STORAGE_MODIFIED;
-            } else {
-                return EVMC_STORAGE_ADDED;
-            }
         }
+        return EVMC_STORAGE_MODIFIED;
     }
+
 // EVMC_STORAGE_UNCHANGED = 0
 // EVMC_STORAGE_MODIFIED = 1,
 // EVMC_STORAGE_MODIFIED_AGAIN = 2,
