@@ -60,7 +60,7 @@ extern "C" EVMC_EXPORT int evm_get_account_id(const char* account, size_t accoun
 
 int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *sender_address, uint32_t sender_address_size) {
 //    EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
-    auto decoded_trx = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString>(raw_trx, (size_t)raw_trx_size);
+    auto decoded_trx = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, uint256_t, uint256_t>(raw_trx, (size_t)raw_trx_size);
     // std::cout << (uint64_t)std::get<0>(decoded_trx) << std::endl; //nonce
     // std::cout << (uint64_t)std::get<1>(decoded_trx) << std::endl; //gas_price
     // std::cout << (uint64_t)std::get<2>(decoded_trx) << std::endl; //gas_limit
@@ -82,21 +82,13 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
     auto r = std::get<7>(decoded_trx); //r
     auto s = std::get<8>(decoded_trx); //s
 
-    EOSIO_ASSERT(r.size() == 32 || r.size() == 0, "bad signature size");
-    EOSIO_ASSERT(s.size() == 32 || s.size() == 0, "bad signature size");
+    // EOSIO_ASSERT(r.size() == 32 || r.size() == 0, "bad signature size");
+    // EOSIO_ASSERT(s.size() == 32 || s.size() == 0, "bad signature size");
 
-    intx::uint256 _r = 0;
-    intx::uint256 _s = 0;
 
-    if (r.size() == 32) {
-        _r = from_big_endian(r.data());
-    }
 
-    if (s.size() == 32) {
-        _s = from_big_endian(s.data());
-    }
 
-    if (_r == 0 && _s == 0) {
+    if (r == 0 && s == 0) {
         EOSIO_ASSERT(sender_address_size == 20, "evm_execute:bad sender size!");
         memcpy(msg.sender.bytes, sender_address, 20);
         eth_account_check_address(*(eth_address*)&msg.sender);
@@ -123,8 +115,12 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
             uint8_t sign[66];
             sign[0] = 0x00; //K1
             sign[1] = first_byte;
-            memcpy(sign+2, r.data(), 32);
-            memcpy(sign+2+32, s.data(), 32);
+
+            r = from_big_endian((uint8_t*)&r);
+            s = from_big_endian((uint8_t*)&s);
+
+            memcpy(sign+2, &r, 32);
+            memcpy(sign+2+32, &s, 32);
             uint8_t pub_key[34];
             auto hash256  = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
             int pub_key_size = ::recover_key((checksum256*)hash256.bytes, (const char *)sign, 66, (char *)pub_key, 34);
@@ -139,12 +135,13 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
             auto id = rlp::encode(_name, _pub_key);
             hash256 = ethash::keccak256(id.data(), id.size());
             memcpy(msg.sender.bytes, hash256.bytes + 12, 20);
+            EOSIO_ASSERT(msg.sender == *(evmc_address*)sender_address, "eth_address not the same");
 //            printhex(hash256.bytes, 32);prints("\n");
         } else {//sign with eth private key
             check_chain_id(chain_id);
             uint8_t sig[65];
-            memcpy(sig, r.data(), 32);
-            memcpy(sig+32, s.data(), 32);
+            memcpy(sig, &r, 32);
+            memcpy(sig+32, &s, 32);
 
             sig[64] = uint8_t((int32_t)v - (chain_id * 2 + 35));
             auto hash256 = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
