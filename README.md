@@ -38,9 +38,15 @@ make -j$(nproc)
 That will generate a wasm file locate at lib/evmone/contracts/ethereum_vm.wasm
 
 
-# Test
+# Demos & Test
 
-Please Refer to [evm4eosiotest](./evm4eosiotest/README.md)
+Please refer to [evm4eosiotest](./evm4eosiotest/README.md)
+
+
+# Implementaion detail
+
+Please refer to [implementaion-detail](./evm4eosiotest/implementaion-detail.md)
+
 
 ## License
 
