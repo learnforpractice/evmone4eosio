@@ -324,6 +324,31 @@ class EVMTestCase(BaseTestCase):
         logger.info(logs)
 
     @on_test
+    def test_storage(self):
+        evm.set_current_account(test_account)
+
+        checksum_contract_address = w3.toChecksumAddress(shared.contract_address)
+        #test storage
+        args = {'from': shared.eth_address,'to': checksum_contract_address}
+        max_gas = 0x7fffffffffffffff
+        logger.info('++++++++++++++modify')
+        logs = Greeter.functions.setValue(0xaabbccddee).transact(args)
+        gas_left = int.from_bytes(logs[-1], 'big')
+        modify_gas_used = max_gas - gas_left
+
+        logger.info('++++++++++++++delete')
+        logs = Greeter.functions.setValue(0).transact(args)
+        gas_left = int.from_bytes(logs[-1], 'big')
+        delete_gas_used = max_gas - gas_left
+
+        logger.info('++++++++++++++add')
+        logs = Greeter.functions.setValue(0xaabb).transact(args)
+        gas_left = int.from_bytes(logs[-1], 'big')
+        add_gas_used = max_gas - gas_left
+        assert modify_gas_used == delete_gas_used
+        assert add_gas_used - delete_gas_used == 15000
+
+    @on_test
     def test_get_value(self):
         evm.set_current_account(test_account)
 
