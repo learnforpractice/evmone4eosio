@@ -420,7 +420,7 @@ class Eth(object):
                 balance = bytes.fromhex(balance)
                 return int.from_bytes(balance, 'little')
             else:
-                return int(float(balance.split(' ')[0])*10000)
+                return round(float(balance.split(' ')[0])*10000)
         return 0
 
     def get_nonce(self, address):
