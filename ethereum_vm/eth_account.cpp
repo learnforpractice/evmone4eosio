@@ -519,13 +519,14 @@ bool eth_account_set_value(eth_address& address, key256& key, value256& value) {
 }
 
 bool eth_account_clear_value(eth_address& address, key256& key) {
-    uint64_t creator;
-    creator = eth_account_find_creator_by_address(address);
-    eosio::check(creator, "creator not found");
+    uint64_t creator, address_index;
+    bool ret = eth_account_find_creator_and_index_by_address(address, creator, address_index);
+    check(ret, "set_value:address not created!");
+
 
     uint64_t code = current_receiver().value;
 
-    account_state_table mytable(name(code), creator);
+    account_state_table mytable(name(code), address_index);
     auto idx_sec = mytable.get_index<"bykey"_n>();
 
     checksum256 _key;
