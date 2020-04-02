@@ -5,6 +5,7 @@ from web3 import Web3
 from solcx import link_code
 import rlp
 import base58
+from eth_utils import keccak
 
 from eth_account._utils.transactions import (
     ChainAwareUnsignedTransaction,
@@ -102,6 +103,15 @@ def public_key_to_hex(pub_key):
     pub_key = base58.b58decode(pub_key[3:])
     return pub_key[:-4].hex()
 
+'''
+create an ETH address from a EOS public key and account name
+'''
+def create_eth_address(pub_key, account):
+    pub_key = public_key_to_hex(pub_key)
+    e = rlp.encode([account, pub_key])
+    eth_address = keccak(e)[12:]
+    return eth_address.hex()
+
 def get_last_trx_result():
     return g_last_trx_ret
 
@@ -161,8 +171,8 @@ def publish_evm_code(transaction, eos_pub_key = None):
     sender = sender.lower()
     logger.info(sender)
     a = EthAccount('helloworld11', sender)
-    logger.info(('+++++++++sender:', sender))
     nonce = a.get_nonce()
+    logger.info(('+++++++++sender:', sender, nonce))
     assert nonce >= 0
 
     transaction['nonce'] = nonce
@@ -362,9 +372,9 @@ class Eth(object):
 #                 indexed_by< "byaddress"_n, const_mem_fun<ethaccount, checksum256, &ethaccount::by_address> >,
 #                 indexed_by< "bycreator"_n, const_mem_fun<ethaccount, uint64_t, &ethaccount::by_creator> > 
 #                 > ethaccount_table;
-    def get_address_info(self, address):
+    def get_address_info(self, address, json=True):
         address = normalize_address(address)
-        rows = self.get_all_address_info()
+        rows = self.get_all_address_info(json)
         for row in rows:
             if row['address'] == address:
                 return row
@@ -380,9 +390,9 @@ class Eth(object):
     #     uint64_t primary_key() const { return creator; }
     # }
     def get_binded_address(self, account):
-        print('+++get_binded_address', account)
+#        print('+++get_binded_address', account)
         ret = eosapi.get_table_rows(True, self.contract_account, self.contract_account, 'addressmap', account, account, account, 1)
-        print(ret)
+#        print(ret)
         if not ret['rows']:
             return
         assert ret['rows'][0]['creator'] == account

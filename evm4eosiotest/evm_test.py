@@ -38,7 +38,7 @@ def load_contract(file_name, main_class):
     src = open(file_name, 'r').read()
     contract_interface = compile_contract(src, f'<stdin>:{main_class}')
     bytecode = contract_interface['bin']
-    print(main_class, bytecode)
+#    print(main_class, bytecode)
     abi = contract_interface['abi']
     return w3.eth.contract(abi=abi, bytecode=bytecode)
 
@@ -141,8 +141,10 @@ def init_testcase():
         print(e)
 
     shared.eth_address = eth.get_binded_address(test_account)
+    text = evm.public_key_to_hex('EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV')
+
     if not shared.eth_address:
-        args = {'account': test_account, 'text': 'hello,world'}
+        args = {'account': test_account, 'text': text}
         try:
             r = eosapi.push_action(main_account, 'create', args, {test_account:'active'})
             shared.eth_address = r['processed']['action_traces'][0]['console']
@@ -161,16 +163,17 @@ def init_testcase():
         assert eth.get_nonce(shared.eth_address) == 1
 
     #verify eth address
-    e = rlp.encode([test_account, 'hello,world'])
+    e = rlp.encode([test_account, text])
     h = keccak(e)
     logger.info((h[12:].hex(), shared.eth_address))
     assert h[12:].hex() == shared.eth_address
     shared.contract_address = None
 
     shared.main_eth_address = eth.get_binded_address(main_account)
+    #EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV is the active key of main_account
+    text = evm.public_key_to_hex('EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV')
+
     if not shared.main_eth_address:
-        #EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV is the active key of main_account
-        text = evm.public_key_to_hex('EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV')
         args = {'account': main_account, 'text': text}
         try:
             r = eosapi.push_action(main_account, 'create', args, {main_account:'active'})
@@ -383,8 +386,9 @@ class EVMTestCase(BaseTestCase):
                 'nonce': 0,
                 'chainId': 1
         }
-        w3.eth.sendTransaction(transaction)
-
+        r = w3.eth.sendTransaction(transaction)
+        print(r)
+        logger.info(shared.main_eth_address)
         logger.info((balance1, eth.get_balance(shared.eth_address)))
 
         assert balance1 == eth.get_balance(shared.eth_address)+1000
@@ -640,18 +644,16 @@ class EVMTestCase(BaseTestCase):
     @on_test
     def test_sign_with_eos_private_key(self):
         pub_key = 'EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV'
-        eth_address = evm.gen_eth_address_from_eos_public_key(pub_key)
+        eth_address = evm.create_eth_address(pub_key, 'helloworld13')
         logger.info(eth_address)
         binded_address = eth.get_binded_address('helloworld13')
         if not binded_address:
-            evm.set_eos_public_key(pub_key)
             name = 'helloworld13'
-            args = {'account': name, 'address': eth_address}
-            eosapi.push_action(main_account, 'bind', args, {name:'active'})
+            text = evm.public_key_to_hex('EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV')
+            args = {'account': name, 'text': text}
+            r = eosapi.push_action(main_account, 'create', args, {name:'active'})
             binded_address = eth.get_binded_address('helloworld13')
         assert eth_address == binded_address
-        evm.set_eos_public_key(None)
-
         eosapi.transfer('helloworld13', 'helloworld11', 10.0, 'deposit')
 
         transaction = {
@@ -667,7 +669,7 @@ class EVMTestCase(BaseTestCase):
         balance = eth.get_balance(eth_address)
         main_balance = eth.get_balance(shared.main_eth_address)
 
-        eosapi.push_action(main_account, 'raw', {'trx':encoded_trx.hex(), 'sender': shared.main_eth_address}, {'helloworld13':'active'})
+        eosapi.push_action(main_account, 'raw', {'trx':encoded_trx.hex(), 'sender': eth_address}, {'helloworld13':'active'})
         balance2 = eth.get_balance(eth_address)
         main_balance2 = eth.get_balance(shared.main_eth_address)
 
@@ -677,7 +679,6 @@ class EVMTestCase(BaseTestCase):
         evm.set_current_account(test_account)
 
         pub_key = 'EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV'
-        eth_address = evm.gen_eth_address_from_eos_public_key(pub_key)
 
         _from = w3.toChecksumAddress(shared.eth_address)
         _to = w3.toChecksumAddress(shared.contract_address)
