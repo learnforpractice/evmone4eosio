@@ -2,6 +2,11 @@
 
 # Setup Pre Requirements:
 
+## Install Prebuilt EOSIO Binaries
+
+Please refer https://github.com/eosio/eos for an installation instruction.
+
+
 ## Install eosio.cdt 1.7.0
 
 ### Ubuntu:
@@ -30,9 +35,12 @@ cmake ..
 make -j$(nproc)
 ```
 
-That will generate a wasm file locate at lib/evmone/contracts/evmone.wasm
+That will generate a wasm file locate at lib/evmone/contracts/ethereum_vm.wasm
 
-Refer to [evm4eosio-demo](https://github.com/learnforpractice/evm4eosio-demo) for demos and test code
+
+# Test
+
+Please Refer to [evm4eosiotest](./evm4eosiotest/README.md)
 
 ## License
 
