@@ -352,27 +352,16 @@ class EVMTestCase(BaseTestCase):
     def test_get_value(self):
         evm.set_current_account(test_account)
 
+        evm.set_current_account(test_account)
         checksum_contract_address = w3.toChecksumAddress(shared.contract_address)
         #test storage
         args = {'from': shared.eth_address,'to': checksum_contract_address}
+        logs = Greeter.functions.setValue(0xaabbccddee).transact(args)
 
+        #test storage
         logs = Greeter.functions.getValue().transact(args)
         logger.info(logs)
-
-# [b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', 
-# b'',
-# [b'\xf9\x8a\xea\xf5\xdb\xa7\x92gk\xdc\xec#\xe3a\xfc\x1b0\x1e\x95e', 
-# [
-#     b'\xf4\x8a\x1d\xc5~\xef\xa3\xdeD\x06\xe6_\xc0\xfc7{%\xd1\x00\xbd\x06B\x92\x01\xa0\x1a\x9e\x8e\x0e\x1d\x07s'
-# ], 
-# b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xaa\xbb\xcc\xdd\xee'
-# ]
-
-
-        values = eth.get_all_values(shared.contract_address)
-        logger.info(values)
-        # contract_address = w3.toChecksumAddress(output['new_address'])
-        # print('+++contract_address:', contract_address)
+        assert int.from_bytes(logs[1], 'big') == 0xaabbccddee
 
     @on_test
     def test_authorization(self):
