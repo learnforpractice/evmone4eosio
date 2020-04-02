@@ -26,8 +26,22 @@ brew install eosio.cdt
 
 # Build
 
+## Build from git repository
 ```
 git clone --branch evm4eosio https://github.com/learnforpractice/evmone4eosio --recursive
+cd evmone4eosio
+mkdir build
+cd build
+cmake ..
+make -j$(nproc)
+```
+
+## Build from a release
+
+Download source code https://github.com/learnforpractice/evmone4eosio-private/releases
+extract the source code to a directory such as evmone4eosio
+
+```
 cd evmone4eosio
 mkdir build
 cd build
