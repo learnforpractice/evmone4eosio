@@ -34,12 +34,26 @@ def compile_contract(contract_source_code, main_class):
     contract_interface = compiled_sol[main_class]
     return contract_interface
 
+def load_pre_compiled_contract(main_class):
+    precompiled = f'./sol/precompiled/{main_class}.json'
+    with open(precompiled, 'r') as f:
+        return json.loads(f.read())
+
 def load_contract(file_name, main_class):
-    src = open(file_name, 'r').read()
-    contract_interface = compile_contract(src, f'<stdin>:{main_class}')
+    precompiled = f'./sol/precompiled/{main_class}.json'
+    contract_interface = None
+    try:
+        src = open(file_name, 'r').read()
+        contract_interface = compile_contract(src, f'<stdin>:{main_class}')
+        with open(precompiled, 'w') as f:
+            json.dump(contract_interface, f)
+    except Exception as e:
+        logger.info(e)
+        contract_interface = load_pre_compiled_contract(main_class)
+
     bytecode = contract_interface['bin']
-#    print(main_class, bytecode)
     abi = contract_interface['abi']
+
     return w3.eth.contract(abi=abi, bytecode=bytecode)
 
 
