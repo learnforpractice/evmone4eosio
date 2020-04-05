@@ -128,7 +128,6 @@ void EVMHost::selfdestruct(const address& addr, const address& beneficiary) {
     eth_account_clear_code(ETH_ADDRESS(addr));
 }
 
-
 result EVMHost::call(const evmc_message& msg) {
     vector<evm_log> _logs;
     if (msg.kind == EVMC_CREATE) {
@@ -177,7 +176,38 @@ void EVMHost::emit_log(const address& addr,
     logs.emplace_back(log);
 }
 
+/*
+"0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } }, "balance": "0x01" },
+"0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } }, "balance": "0x01" },
+"0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } }, "balance": "0x01" },
+"0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } }, "balance": "0x01" },
+*/
+struct contract_gas {
+    int base;
+    int word;
+};
 
+contract_gas contracts_gas[] = {
+    {3000,0},
+    {60,12},
+    {600,120},
+    {15,3}
+};
+
+enum contract_type {
+    type_ecrecover,
+    type_sha256,
+    type_ripemd160,
+    type_identity
+};
+
+int64_t get_precompiled_contract_gas(contract_type type, size_t input_size) {
+//size_t input_size, int64_t base_gas, int64_t word_gas
+    EOSIO_ASSERT(type <= type_identity, "bad contract type");
+    int64_t base_gas = contracts_gas[(int)type].base;
+    int64_t word_gas = contracts_gas[(int)type].word;
+    return base_gas + (input_size + 31) / 32 * word_gas;
+}
 
 result on_call(evmc_revision version, evmc_address& origin, const evmc_message& msg, vector<evm_log>& logs) {
     static evmc_address ecrecover_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
@@ -216,7 +246,9 @@ result on_call(evmc_revision version, evmc_address& origin, const evmc_message& 
 
             memset(hash, 0, 32);
             memcpy(hash+12, (char*)&hash256 + 12, 20);
-            res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
+            
+            auto gas_cost = get_precompiled_contract_gas(type_ecrecover, msg.input_size);
+            res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, (uint8_t *)&hash, 32);
         } else {//use EOS recover_key api
             uint8_t hash[32];
             uint8_t sign[66];
@@ -233,7 +265,8 @@ result on_call(evmc_revision version, evmc_address& origin, const evmc_message& 
 
             memset(hash, 0, 32);
             memcpy(hash+12, (char*)&hash256 + 12, 20);
-            res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
+            auto gas_cost = get_precompiled_contract_gas(type_ecrecover, msg.input_size);
+            res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, (uint8_t *)&hash, 32);
         }
         // bytes32 *r = (bytes32*)msg.input_data + 2;
         // bytes32 *s = (bytes32*)msg.input_data + 3;
@@ -242,16 +275,20 @@ result on_call(evmc_revision version, evmc_address& origin, const evmc_message& 
         struct checksum256 hash{};
         sha256((char *)msg.input_data, (uint32_t)msg.input_size, &hash);
         //vmelog("++++++++++call sha256, input: %s\n", msg.input_data);
-        res = evmc_make_result(EVMC_SUCCESS, 0, (uint8_t *)&hash, 32);
+        auto gas_cost = get_precompiled_contract_gas(type_sha256, msg.input_size);
+        res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, (uint8_t *)&hash, 32);
         return result(res);
     } else if (msg.destination == ripemd160_address) {
         uint8_t hash[32];
         memset(hash, 0, 32);
         ripemd160((char *)msg.input_data, (uint32_t)msg.input_size, (struct checksum160*)&hash[12]);
-        res = evmc_make_result(EVMC_SUCCESS, 0, hash, 32);
+
+        auto gas_cost = get_precompiled_contract_gas(type_ripemd160, msg.input_size);
+        res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, hash, 32);
         return result(res);
     } else if (msg.destination == identity_address) {
-        res = evmc_make_result(EVMC_SUCCESS, 0, msg.input_data, msg.input_size);
+        auto gas_cost = get_precompiled_contract_gas(type_identity, msg.input_size);
+        res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, msg.input_data, msg.input_size);
         return result(res);
     } else {
         vector<uint8_t> code;
