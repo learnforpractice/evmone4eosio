@@ -104,6 +104,9 @@ def run_test(test):
                 gas_price = hex2int(trx['gasPrice'])
                 nonce = hex2int(trx['nonce'])
                 to = trx['to']
+                if to:
+                    to = w3.toChecksumAddress(to)
+
                 secret_key = trx['secretKey']
                 a = Account.from_key('0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8')
                 _from = a.address[2:]
@@ -111,12 +114,12 @@ def run_test(test):
                 transaction = dict(nonce=nonce,
                                     gasPrice=gas_price,
                                     gas=gas_limit,
-#                                    to=to,
+                                    to=to,
                                     value=value,
                                     data=data)
                 logger.info((_from, nonce))
                 transaction = evm.pack_transaction(transaction)
-                args = {'trx': transaction, 'sender': _from}
+                args = {'trx': transaction, 'sender': _from, 'counter': g_counter}
                 ret = eosapi.push_action('helloworld11', 'raw2', args, {'helloworld11':'active'})
                 output = ret['processed']['action_traces'][0]['console']
                 logger.info(("++++logs:", output))
