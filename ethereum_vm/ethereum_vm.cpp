@@ -154,6 +154,10 @@ extern "C" {
             } else if (action == "raw"_n.value) {
                 auto a = unpack_action_data<raw>();
                 evm_execute(a.trx.data(), a.trx.size(), a.sender.data(), a.sender.size());
+            } else if (action == "call"_n.value) {
+                auto a = unpack_action_data<raw>();
+                evm_execute(a.trx.data(), a.trx.size(), a.sender.data(), a.sender.size());
+                check(false, "evm.call");
             } else if (action == "getaddrinfo"_n.value) {
                 eth_address address;
                 int64_t nonce;
