@@ -101,4 +101,25 @@ Refer to test script in testsrunner.py for how it works.
 
 ```
 
+## Interact With EVM4EOSIO Via Ethereum RPC Interface
+
+Python script eth2eosbridge.py enables applications to interact with EVM smart contract on EOSIO through the Ethereum RPC Interface, so that Dapp on Ethereum can be easily ported to the EOSIO platform.
+
+To use this tool run the following command to install required Python packages.
+
+```
+python3.7 -m pip install plyvel
+python3.7 -m pip install flask
+python3.7 -m pip install flask_cors
+```
+
+Run the following command to start this tool
+
+```
+python3.7 eth2eosbridge.py
+```
+
+## Demo Video
+
+[Demo](https://www.youtube.com/watch?v=K2-laWNcsVM&feature=youtu.be)
 
