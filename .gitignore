@@ -4,3 +4,6 @@
 .ipynb_checkpoints
 *.wallet
 __pycache__
+leveldb
+dd
+cd
