@@ -6,6 +6,7 @@ from solcx import link_code
 import rlp
 import base58
 from eth_utils import keccak
+from eth_utils import decode_hex, encode_hex
 
 from eth_account._utils.transactions import (
     ChainAwareUnsignedTransaction,
@@ -57,6 +58,8 @@ def format_log(aa):
 def hex2int(h):
     if h[:2] == '0x':
         h = h[2:]
+    if len(h) % 2 == 1:
+        h = '0' + h
     h = bytes.fromhex(h)
     return int.from_bytes(h, 'big')
 
@@ -181,7 +184,7 @@ def publish_evm_code(transaction, eos_pub_key = None):
 
     if sender in keys:
         priv_key = key_maps[sender]
-        encoded_transaction = Account.sign_transaction(transaction, priv_key)   
+        encoded_transaction = Account.sign_transaction(transaction, priv_key)
         encoded_transaction = encoded_transaction.rawTransaction.hex()[2:]
     elif g_public_key:
         transaction = dissoc(transaction, 'from')
@@ -209,7 +212,7 @@ def publish_evm_code(transaction, eos_pub_key = None):
     g_last_trx_ret = ret
     logs = ret['processed']['action_traces'][0]['console']
     # logger.info(logs)
-#    logger.info(('++++elapsed:', ret['processed']['elapsed']))
+    logger.info(('++++elapsed:', ret['processed']['elapsed']))
     try:
         logs = bytes.fromhex(logs)
         logs = rlp.decode(logs)
@@ -282,9 +285,14 @@ def get_eth_address_info(contract, eth_addr):
     return json.loads(ret)
 
 def normalize_address(address):
-    if address[:2] == '0x':
-        address = address[2:]
-    return address.lower()
+    if isinstance(address, str):
+        if address[:2] == '0x':
+            address = address[2:]
+        return address.lower()
+    elif isinstance(address, bytes):
+        assert len(address) == 20
+        return address.hex()
+    raise Exception('bad address')
 
 class Eth(object):
     '''
@@ -555,6 +563,8 @@ class EthAccount(object):
 
 provider = LocalProvider()
 w3 = Web3(provider)
+eth = Eth('helloworld11')
+
 # my_provider = Web3.IPCProvider('/Users/newworld/dev/uuos2/build/aleth/aleth/dd/geth.ipc')
 # w3 = Web3(my_provider)
 #print(__file__, 'initialization finished!')
