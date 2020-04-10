@@ -214,7 +214,6 @@ class MyEVMBackend(PyEVMBackend):
         sender = transaction['from'].hex()
         contract_name = 'helloworld11'
         account_name = 'helloworld12'
-        eth = evm.Eth(contract_name)
 
         unsigned_transaction = ByzantiumTransaction(
                     nonce=unsigned_transaction.nonce,
@@ -223,16 +222,17 @@ class MyEVMBackend(PyEVMBackend):
                     to=unsigned_transaction.to,
                     value=unsigned_transaction.value,
                     data=unsigned_transaction.data,
-                    v=eth.get_chain_id(),
+                    v=evm.eth.get_chain_id(),
                     r=0,
                     s=0,
                 )
 
         trx = rlp.encode(unsigned_transaction)
+        creator = evm.eth.get_creator(sender)
 
         try:
             args = {'trx': trx.hex(), 'sender': sender}
-            ret = eosapi.push_action(contract_name, 'call', args, {account_name:'active'})
+            ret = eosapi.push_action(contract_name, 'call', args, {creator:'active'})
         except HttpAPIError as e:
             logger.info(e.response)
             response = json.loads(e.response)
