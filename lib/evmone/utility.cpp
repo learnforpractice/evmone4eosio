@@ -59,7 +59,7 @@ uint256be to_uint256(const uint8_t* data, uint32_t size, int endian) {
 
 uint32_t big_endian_to_uint32(const uint8_t* data, uint32_t size) {
     EOSIO_ASSERT(size <= 4, "bad size");
-    uint32_t value;
+    uint32_t value = 0;
     for (uint32_t i=0;i<size;i++) {
         ((uint8_t*)&value)[i] = data[size-1-i];
     }
