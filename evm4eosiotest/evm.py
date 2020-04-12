@@ -324,12 +324,18 @@ class Eth(object):
 # };
 # typedef eosio::singleton< "global"_n, accountcounter >   account_counter;
     def get_eth_address_count(self):
-        ret = eosapi.get_table_rows(True, self.contract_account, self.contract_account, 'global', '', '', '', 1)
-        return ret['rows'][0]['count']
+        try:
+            ret = eosapi.get_table_rows(True, self.contract_account, self.contract_account, 'global', '', '', '', 1)
+            return ret['rows'][0]['count']
+        except Exception as e:
+            return 0
 
     def get_chain_id(self):
-        ret = eosapi.get_table_rows(True, self.contract_account, self.contract_account, 'global', '', '', '', 1)
-        return ret['rows'][0]['chainid']
+        try:
+            ret = eosapi.get_table_rows(True, self.contract_account, self.contract_account, 'global', '', '', '', 1)
+            return ret['rows'][0]['chainid']
+        except Exception as e:
+            return 0
 
 #key256_acounter
 #     uint64_t code = current_receiver().value;
@@ -340,14 +346,20 @@ class Eth(object):
 # };
 #typedef eosio::singleton< "global2"_n, key256counter >   key256_counter;
     def get_total_keys(self):
-        ret = eosapi.get_table_rows(True, self.contract_account, self.contract_account, 'global2', '', '', '', 1)
-        if ret['rows']:
-            return ret['rows'][0]['count']
-        return 0
+        try:
+            ret = eosapi.get_table_rows(True, self.contract_account, self.contract_account, 'global2', '', '', '', 1)
+            if ret['rows']:
+                return ret['rows'][0]['count']
+            return 0
+        except Exception as e:
+            return 0
 
     def get_all_address_info(self, json=True):
-        ret = eosapi.get_table_rows(json, self.contract_account, self.contract_account, 'ethaccount', '', '', '', 10000)
-        return ret['rows']
+        try:
+            ret = eosapi.get_table_rows(json, self.contract_account, self.contract_account, 'ethaccount', '', '', '', 10000)
+            return ret['rows']
+        except Exception as e:
+            return None
 
 #table ethaccount
 
@@ -398,13 +410,14 @@ class Eth(object):
     #     uint64_t primary_key() const { return creator; }
     # }
     def get_binded_address(self, account):
-#        print('+++get_binded_address', account)
-        ret = eosapi.get_table_rows(True, self.contract_account, self.contract_account, 'addressmap', account, account, account, 1)
-#        print(ret)
-        if not ret['rows']:
-            return
-        assert ret['rows'][0]['creator'] == account
-        return ret['rows'][0]['address']
+        try:
+            ret = eosapi.get_table_rows(True, self.contract_account, self.contract_account, 'addressmap', account, account, account, 1)
+            if not ret['rows']:
+                return
+            assert ret['rows'][0]['creator'] == account
+            return ret['rows'][0]['address']
+        except Exception as e:
+            return None
 
     def get_creator(self, address):
         address = normalize_address(address)
@@ -463,19 +476,26 @@ class Eth(object):
         index = self.get_index(address)
         # print('+++++index:', creator, index)
         index = eosapi.n2s(index)
-        ret = eosapi.get_table_rows(True, self.contract_account, index, 'accountstate', '', '', '', 100)
-        return ret['rows']
+        try:
+            ret = eosapi.get_table_rows(True, self.contract_account, index, 'accountstate', '', '', '', 100)
+            return ret['rows']
+        except Exception as e:
+            return 0
 
     def get_value(self, address, key):
         address = normalize_address(address)
         creator = self.get_creator(address)
         index = self.get_index(address)
         index = eosapi.n2s(index)
-        ret = eosapi.get_table_rows(True, self.contract_account, index, 'accountstate', '', '', '', 100)
-        for row in ret['rows']:
-            if row['key'] == key:
-                return row['key']
-        return None
+
+        try:
+            ret = eosapi.get_table_rows(True, self.contract_account, index, 'accountstate', '', '', '', 100)
+            for row in ret['rows']:
+                if row['key'] == key:
+                    return row['key']
+            return None
+        except Exception as e:
+            return None
 
     def get_code(self, address):
         address = normalize_address(address)
@@ -485,10 +505,15 @@ class Eth(object):
         index = row['index']
         creator = row['creator']
         index = eosapi.n2s(index)
-        ret = eosapi.get_table_rows(True, self.contract_account, creator, 'ethcode', index, index, index, 1)
-        if ret['rows']:
-            return ret['rows'][0]['code']
-        return ''
+
+        try:
+            ret = eosapi.get_table_rows(True, self.contract_account, creator, 'ethcode', index, index, index, 1)
+            if ret['rows']:
+                return ret['rows'][0]['code']
+            return ''
+        except Exception as e:
+            return 0
+
 
     def get_code_cache(self, address):
         address = normalize_address(address)
@@ -498,10 +523,14 @@ class Eth(object):
         index = row['index']
         creator = row['creator']
         index = eosapi.n2s(index)
-        ret = eosapi.get_table_rows(False, self.contract_account, creator, 'ethcodecache', index, index, index, 1)
-        if ret['rows']:
-            return ret['rows'][0]
-        return ''
+
+        try:
+            ret = eosapi.get_table_rows(False, self.contract_account, creator, 'ethcodecache', index, index, index, 1)
+            if ret['rows']:
+                return ret['rows'][0]
+            return ''
+        except Exception as e:
+            return 0
 
 #     uint64_t code = current_receiver().value;
 # scope = creator
@@ -563,7 +592,7 @@ class EthAccount(object):
 
 provider = LocalProvider()
 w3 = Web3(provider)
-eth = Eth('helloworld11')
+eth = None
 
 # my_provider = Web3.IPCProvider('/Users/newworld/dev/uuos2/build/aleth/aleth/dd/geth.ipc')
 # w3 = Web3(my_provider)

@@ -87,8 +87,6 @@ def setup_tester_chain(genesis_params=None, genesis_state=None, num_accounts=Non
             print(transaction.get_sender().hex())
             gas_used = 100
 
-            contract_name = 'helloworld11'
-            account_name = 'helloworld12'
             sender = transaction.get_sender().hex()
 
             value = transaction.value
@@ -111,7 +109,9 @@ def setup_tester_chain(genesis_params=None, genesis_state=None, num_accounts=Non
             trx = rlp.encode(unsigned_transaction)
             args = {'trx': trx.hex(), 'sender': sender}
             creator = evm.eth.get_creator(sender)
-            ret = eosapi.push_action(contract_name, 'raw', args, {creator: 'active'})
+            ret = eosapi.push_action(self.main_account, 'raw', args, {creator: 'active'})
+            logger.info(('++++elapsed:', ret['processed']['elapsed']))
+
             logs = ret['processed']['action_traces'][0]['console']
             logger.info(logs)
             logs = rlp.decode(bytes.fromhex(logs))
@@ -177,8 +177,9 @@ import evm
 class MyEVMBackend(PyEVMBackend):
 
     def __init__(self, genesis_parameters=None, genesis_state=None, main_account='helloworld11'):
-        super().__init__(genesis_parameters, genesis_state)
         self.eth = evm.eth
+        self.main_account = main_account
+        super().__init__(genesis_parameters, genesis_state)
 
     def estimate_gas(self, transaction):
         return 3000000
@@ -186,8 +187,7 @@ class MyEVMBackend(PyEVMBackend):
         return ret
 
     def get_nonce(self, account, block_number="latest"):
-        print('+++++MyEVMBackend.get_nonce', account.hex())
-        a = evm.EthAccount('helloworld11', account.hex())
+        a = evm.EthAccount(self.main_account, account.hex())
         return a.get_nonce()
 
     def get_balance(self, account, block_number="latest"):
@@ -212,8 +212,6 @@ class MyEVMBackend(PyEVMBackend):
         unsigned_transaction = self.chain.create_unsigned_transaction(**normalized_transaction)
 
         sender = transaction['from'].hex()
-        contract_name = 'helloworld11'
-        account_name = 'helloworld12'
 
         unsigned_transaction = ByzantiumTransaction(
                     nonce=unsigned_transaction.nonce,
@@ -232,7 +230,7 @@ class MyEVMBackend(PyEVMBackend):
 
         try:
             args = {'trx': trx.hex(), 'sender': sender}
-            ret = eosapi.push_action(contract_name, 'call', args, {creator:'active'})
+            ret = eosapi.push_action(self.main_account, 'call', args, {creator:'active'})
         except HttpAPIError as e:
             logger.info(e.response)
             response = json.loads(e.response)
@@ -273,4 +271,6 @@ class MyEVMBackend(PyEVMBackend):
         self.account_keys, self.chain = setup_tester_chain(genesis_params, genesis_state,
                                                             0)
                                                         #    num_accounts)
+        self.chain.main_account = self.main_account
+
 
