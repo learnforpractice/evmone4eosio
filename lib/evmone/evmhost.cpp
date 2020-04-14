@@ -216,8 +216,11 @@ result on_call(evmc_revision version, evmc_address& origin, const evmc_message& 
     static evmc_address identity_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04};
 //DELEGATECALL
     evmc_result res{};
-
-    evmc_transfer(msg.sender, msg.destination, msg.value);
+    if (msg.kind == EVMC_DELEGATECALL) {
+//
+    } else {
+        evmc_transfer(msg.sender, msg.destination, msg.value);
+    }
 
     uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
