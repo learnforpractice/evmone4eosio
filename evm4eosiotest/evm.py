@@ -492,7 +492,7 @@ class Eth(object):
             ret = eosapi.get_table_rows(True, self.contract_account, index, 'accountstate', '', '', '', 100)
             for row in ret['rows']:
                 if row['key'] == key:
-                    return row['key']
+                    return row['value']
             return None
         except Exception as e:
             return None
