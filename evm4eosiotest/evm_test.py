@@ -11,6 +11,7 @@ from evm import w3
 import base58
 
 from eth_utils import keccak
+import eth_account
 from solcx import compile_source, compile_files, set_solc_version
 from init import *
 
@@ -567,29 +568,29 @@ class EVMTestCase(BaseTestCase):
         args = {'from': _from, 'to': _to}
         logs = Greeter.functions.testOrigin(origin).transact(args)
 
-    # @on_test
-    # def test_ecrecover(self):
-    #     evm.set_current_account(test_account)
+    @on_test
+    def test_ecrecover(self):
+        evm.set_current_account(test_account)
 
-    #     _from = w3.toChecksumAddress(shared.eth_address)
-    #     _to = w3.toChecksumAddress(shared.contract_address)
-    #     args = {'from': _from, 'to': _to}
+        _from = w3.toChecksumAddress(shared.eth_address)
+        _to = w3.toChecksumAddress(shared.contract_address)
+        args = {'from': _from, 'to': _to}
 
-    #     from eth_keys import keys
-    #     from eth_utils import keccak, to_bytes
-    #     h = keccak(b'a message')
-    #     pk = keys.PrivateKey(b'\x01' * 32)
-    #     sign = pk.sign_msg_hash(h)
-    #     print(h, sign.v, sign.r, sign.s)
-    #     r = to_bytes(sign.r)
-    #     s = to_bytes(sign.s)
-    #     logs = Greeter.functions.ecrecoverTest(h, sign.v+27, r, s).transact(args)
-    #     logger.info(logs)
-    #     pub_key = sign.recover_public_key_from_msg(b'a message')
-    #     address = pub_key.to_canonical_address()
-    #     logger.info(pub_key)
-    #     logger.info(address)
-    #     assert logs[1][12:] == address
+        from eth_keys import keys
+        from eth_utils import keccak, to_bytes
+        h = keccak(b'a message')
+        pk = keys.PrivateKey(b'\x01' * 32)
+        sign = pk.sign_msg_hash(h)
+        print(h, sign.v, sign.r, sign.s)
+        r = to_bytes(sign.r)
+        s = to_bytes(sign.s)
+        logs = Greeter.functions.ecrecoverTest(h, sign.v+27, r, s).transact(args)
+        logger.info(logs)
+        pub_key = sign.recover_public_key_from_msg(b'a message')
+        address = pub_key.to_canonical_address()
+        logger.info(pub_key)
+        logger.info(address)
+        assert logs[1][12:] == address
 
     @on_test
     def test_ripemd160(self):
@@ -701,6 +702,38 @@ class EVMTestCase(BaseTestCase):
         balance2 = eth.get_balance(eth_address)
         main_balance2 = eth.get_balance(shared.main_eth_address)
 
+    @on_test
+    def test_sign_with_eth_private_key(self):
+        priv_key = '0x8dedace8c0b5b769f5b4b6b55aeb71c34b1f56b9ba80d5ce1767be653cbb7377'
+        pub_key = '0x8518c4067383141dA213A9478c210dd5b1dedb9C'
+        eth_address = pub_key[2:].lower()
+        binded_address = eth.get_binded_address('helloworld14')
+        if not binded_address:
+            args = {'account':'helloworld14', 'address': eth_address}
+            eosapi.push_action(main_account, 'bind', args, {'helloworld14':'active'})
+            binded_address = eth.get_binded_address('helloworld14')
+        assert eth_address == binded_address, (eth_address, binded_address)
+        eosapi.transfer('helloworld14', 'helloworld11', 10.0, 'deposit')
+
+        transaction = {
+            'nonce': eth.get_nonce(eth_address),
+            'gasPrice': 2,
+            'gas': 3,
+            'to':  bytes.fromhex(shared.eth_address),
+            'value': 1000,
+            'data': b'123',
+            'chainId': 1
+        }
+        encoded_trx = eth_account.account.Account.sign_transaction(transaction, priv_key)
+        logger.info(rlp.decode(encoded_trx.rawTransaction))
+        encoded_trx = encoded_trx.rawTransaction.hex()[2:]
+
+        balance = eth.get_balance(eth_address)
+        main_balance = eth.get_balance(shared.main_eth_address)
+
+        eosapi.push_action(main_account, 'raw', {'trx':encoded_trx, 'sender': eth_address}, {'helloworld14':'active'})
+        balance2 = eth.get_balance(eth_address)
+        main_balance2 = eth.get_balance(shared.main_eth_address)
 
     @on_test
     def test_ecrecover_with_eos_key(self):
