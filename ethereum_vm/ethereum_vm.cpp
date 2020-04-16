@@ -125,6 +125,7 @@ extern "C" {
     }
 
     void* get_secp256k1_ecmult_static_context() {
+        load_secp256k1_ecmult_static_context();
         check(secp256k1_ecmult_static_context != nullptr, "secp256k1_ecmult_static_context not initialized!");
         return secp256k1_ecmult_static_context;
     }
