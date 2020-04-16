@@ -119,8 +119,6 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
             EOSIO_THROW("invalid signature!");
         }
 
-        rlp::ByteString unsigned_trx = rlp::encode(std::get<0>(decoded_trx), std::get<1>(decoded_trx),std::get<2>(decoded_trx),std::get<3>(decoded_trx),std::get<4>(decoded_trx),std::get<5>(decoded_trx));
-
         if (chain_id != -4 && (0xff800000 & uint32_t(chain_id)) != 0) {//sign with eos private key
             uint8_t first_byte = uint32_t(chain_id) >> 24; //first byte of eos signature
             chain_id = uint32_t(chain_id) & 0x7fffff;
@@ -135,6 +133,8 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
             memcpy(sign+2, &r, 32);
             memcpy(sign+2+32, &s, 32);
             uint8_t pub_key[34];
+
+            rlp::ByteString unsigned_trx = rlp::encode(std::get<0>(decoded_trx), std::get<1>(decoded_trx),std::get<2>(decoded_trx),std::get<3>(decoded_trx),std::get<4>(decoded_trx),std::get<5>(decoded_trx));
             auto hash256  = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
             int pub_key_size = ::recover_key((checksum256*)hash256.bytes, (const char *)sign, 66, (char *)pub_key, 34);
             EOSIO_ASSERT(pub_key_size==34, "bad pub key size");
@@ -166,6 +166,8 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
             }
             v -= 27;
             sig[64] = uint8_t(v);
+
+            rlp::ByteString unsigned_trx = rlp::encode(std::get<0>(decoded_trx), std::get<1>(decoded_trx),std::get<2>(decoded_trx),std::get<3>(decoded_trx),std::get<4>(decoded_trx),std::get<5>(decoded_trx), chain_id, "", "");
             auto hash256 = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
             uint8_t pub_key[65];
             memset(pub_key, 0, 65);
