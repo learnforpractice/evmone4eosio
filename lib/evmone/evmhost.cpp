@@ -16,7 +16,7 @@ EVMHost::EVMHost(const evmc_address& _origin, evmc_revision _version) noexcept {
     tx_context.block_timestamp = current_time()/1000000;
     tx_context.block_gas_limit = max_gas_limit;
     int32_t id = eth_get_chain_id();
-    tx_context.chain_id = to_little_endian(id);
+    tx_context.chain_id = to_uint256(id);
     tx_context.tx_gas_price = {};
     version = _version;
 }
