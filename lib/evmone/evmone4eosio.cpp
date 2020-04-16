@@ -58,6 +58,19 @@ extern "C" EVMC_EXPORT int evm_get_account_id(const char* account, size_t accoun
     return 0;
 }
 
+#define EIP155_CHAIN_ID_OFFSET  (35)
+
+bool is_eip_155_signed_transaction(uint32_t v) {
+    if (v >= EIP155_CHAIN_ID_OFFSET) {
+        return true;
+    }
+    return false;
+}
+
+bool is_even(uint32_t v) {
+    return v % 2 == 0;
+}
+
 int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *sender_address, uint32_t sender_address_size) {
 //    EOSIO_ASSERT(sender_address_size == 20, "bad sender size");
     auto decoded_trx = rlp::decode<uint256_t, uint256_t, uint256_t, rlp::ByteString, rlp::ByteString, rlp::ByteString, rlp::ByteString, uint256_t, uint256_t>(raw_trx, (size_t)raw_trx_size);
@@ -140,10 +153,19 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
         } else {//sign with eth private key
             check_chain_id(chain_id);
             uint8_t sig[65];
+            r = from_big_endian((uint8_t*)&r);
+            s = from_big_endian((uint8_t*)&s);
             memcpy(sig, &r, 32);
             memcpy(sig+32, &s, 32);
-
-            sig[64] = uint8_t((int32_t)v - (chain_id * 2 + 35));
+            if (is_eip_155_signed_transaction(v)) {
+                if (is_even(v)) {
+                    v = 28;
+                } else {
+                    v = 27;
+                }
+            }
+            v -= 27;
+            sig[64] = uint8_t(v);
             auto hash256 = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
             uint8_t pub_key[65];
             memset(pub_key, 0, 65);
@@ -207,7 +229,7 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
 //evmone4eosio_test.cpp
 extern "C" void evm_execute_test(const uint8_t* tests, uint32_t _size);
 
-extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *sender_address, uint32_t sender_address_size) {
+extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, size_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
     if (memcmp(sender_address+4, "\xff\xff\xfe\xfd\xfc\xfb\xfa\xf9\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0", 16)== 0) {
         evm_execute_test(raw_trx, raw_trx_size);
         return 0;
@@ -220,7 +242,7 @@ extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, uint32_t raw_trx_
 #else
 
 #ifndef USE_INTRINSIC_EVM_EXECUTE
-extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *sender_address, uint32_t sender_address_size) {
+extern "C" EVMC_EXPORT int evm_execute(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *sender_address, size_t sender_address_size) {
     evm_execute_trx(raw_trx, raw_trx_size, sender_address, sender_address_size);
     return 0;
 }
