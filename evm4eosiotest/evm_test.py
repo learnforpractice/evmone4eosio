@@ -852,6 +852,8 @@ shared = ShareValues()
 
 #evm.set_eos_public_key('EOS7ent7keWbVgvptfYaMYeF2cenMBiwYKcwEuc11uCbStsFKsrmV')
 
+eosapi.update_runtime_options(max_transaction_time=80)
+
 if __name__ == '__main__':
     # runner = unittest.TextTestRunner(failfast=True)
     # runner.run(suite())
