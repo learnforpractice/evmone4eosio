@@ -64,12 +64,14 @@ python3.7 -m pip install base58
 
 ## Start a Testnet
 ```
+rm -r dd
 nodeos  --verbose-http-errors  --http-max-response-time-ms 100 --data-dir dd --config-dir cd --wasm-runtime eos-vm-jit --contracts-console -p eosio -e --plugin eosio::producer_plugin --plugin eosio::chain_api_plugin --plugin eosio::producer_api_plugin
 ```
 
 In order to pass `test_ecrecover` and `test_sign_with_eth_private_key` testcase in evm_test.py, start nodeos with `--eos-vm-oc-enable` option as show below:
 
 ```
+rm -r dd
 nodeos --eos-vm-oc-enable --verbose-http-errors  --http-max-response-time-ms 100 --data-dir dd --config-dir cd --wasm-runtime eos-vm-jit --contracts-console -p eosio -e --plugin eosio::producer_plugin --plugin eosio::chain_api_plugin --plugin eosio::producer_api_plugin
 ```
 
