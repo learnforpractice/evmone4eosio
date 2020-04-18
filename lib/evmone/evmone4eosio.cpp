@@ -184,6 +184,8 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
         eth_account_check_address(*(eth_address*)&msg.sender);
     }
 
+    evm_set_origin_address(*(eth_address *)&msg.sender);
+
     uint64_t nonce = 0;
     bool ret = eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
     EOSIO_ASSERT(ret, "get_nonce: bad nonce");

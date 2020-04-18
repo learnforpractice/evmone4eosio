@@ -482,9 +482,12 @@ bool eth_account_set_value(eth_address& address, key256& key, value256& value) {
     bool ret = eth_account_find_creator_and_index_by_address(address, creator, address_index);
     check(ret, "set_value:address not created!");
 //    eosio::check(creator, "set_value: address creator not found!");
-
-    require_auth(name(creator));
     
+    auto sender = evm_get_origin_address();
+    uint64_t sender_creator = eth_account_find_creator_by_address(sender);
+
+    require_auth(name(sender_creator));
+
     uint64_t code = current_receiver().value;
 
     account_state_table mytable(name(code), address_index);
@@ -586,4 +589,14 @@ void eth_account_clear_all() {
 
 string n2s(uint64_t value) {
     return name(value).to_string();
+}
+
+static eth_address g_sender{};
+
+eth_address& evm_get_origin_address() {
+    return g_sender;
+}
+
+void evm_set_origin_address(eth_address& addr) {
+    g_sender = addr;
 }

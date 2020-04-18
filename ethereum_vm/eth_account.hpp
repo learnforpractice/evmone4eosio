@@ -86,3 +86,6 @@ void eth_account_clear_all();
 string n2s(uint64_t value);
 
 #define EVM_API __attribute__ ((visibility ("default")))
+
+eth_address& evm_get_origin_address();
+void evm_set_origin_address(eth_address& addr);

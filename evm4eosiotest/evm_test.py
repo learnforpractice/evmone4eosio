@@ -339,6 +339,36 @@ class EVMTestCase(BaseTestCase):
 #        logger.info(logs)
 
     @on_test
+    def test_set_value2(self):
+        '''
+        testcase for pay ram with original sender address creator, not contract address creator
+        '''
+        evm.set_current_account(test_account)
+        checksum_contract_address = w3.toChecksumAddress(shared.contract_address)
+        #test storage
+        args = {'from': shared.eth_address,'to': checksum_contract_address}
+
+        logs = Greeter.functions.setValue(0xaabbccddee).transact(args)
+#        logger.info((logs, keccak(b'onSetValue(uint256)')))
+#        logger.info(logs[2][0])
+        assert logs[2][0][1][0] == keccak(b'onSetValue(uint256)')
+        evm.format_log(logs)
+
+
+        evm.set_current_account(main_account)
+
+        checksum_contract_address = w3.toChecksumAddress(shared.contract_address)
+        #test storage
+        args = {'from': shared.main_eth_address,'to': checksum_contract_address}
+
+        logs = Greeter.functions.setValue(0xaabb).transact(args)
+#        logger.info((logs, keccak(b'onSetValue(uint256)')))
+#        logger.info(logs[2][0])
+        assert logs[2][0][1][0] == keccak(b'onSetValue(uint256)')
+        evm.format_log(logs)
+#        logger.info(logs)
+
+    @on_test
     def test_storage(self):
         evm.set_current_account(test_account)
 
