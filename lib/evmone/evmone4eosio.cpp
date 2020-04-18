@@ -167,7 +167,13 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const char *s
             v -= 27;
             sig[64] = uint8_t(v);
 
-            rlp::ByteString unsigned_trx = rlp::encode(std::get<0>(decoded_trx), std::get<1>(decoded_trx),std::get<2>(decoded_trx),std::get<3>(decoded_trx),std::get<4>(decoded_trx),std::get<5>(decoded_trx), chain_id, "", "");
+            rlp::ByteString unsigned_trx;
+            if (chain_id == -4) {
+                unsigned_trx = rlp::encode(std::get<0>(decoded_trx), std::get<1>(decoded_trx),std::get<2>(decoded_trx),std::get<3>(decoded_trx),std::get<4>(decoded_trx),std::get<5>(decoded_trx));
+            } else {
+                unsigned_trx = rlp::encode(std::get<0>(decoded_trx), std::get<1>(decoded_trx),std::get<2>(decoded_trx),std::get<3>(decoded_trx),std::get<4>(decoded_trx),std::get<5>(decoded_trx), chain_id, "", "");
+            }
+
             auto hash256 = ethash::keccak256(unsigned_trx.data(), unsigned_trx.size());
             uint8_t pub_key[65];
             memset(pub_key, 0, 65);
