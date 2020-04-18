@@ -42,7 +42,7 @@ void evmc_transfer(const evmc_address& sender, const evmc_address& receiver, con
         EOSIO_THROW("receiver amount overflow!");
     }
 
-    eth_account_set_balance(*(eth_address*)&sender, _sender_amount, creator);
+    eth_account_set_balance(*(eth_address*)&sender, _sender_amount, 0);
     eth_account_set_balance(*(eth_address*)&receiver, _receiver_amount, 0);
 }
 
