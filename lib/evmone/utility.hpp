@@ -43,3 +43,33 @@ rlp::ByteString encode_log(evm_log& log);
 rlp::ByteString encode_logs(vector<evm_log>& logs);
 void print_result(evmc_address& address, const uint8_t* output_data, size_t output_size, vector<evm_log>& logs, int64_t gas_cost);
 void check_chain_id(int32_t id);
+
+bytes32 evm_keccak256(const uint8_t *input, size_t input_size);
+
+
+
+/*
+"0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } }, "balance": "0x01" },
+"0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } }, "balance": "0x01" },
+"0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } }, "balance": "0x01" },
+"0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } }, "balance": "0x01" },
+*/
+struct contract_gas {
+    int64_t base;
+    int64_t word;
+};
+
+enum contract_type {
+    contract_type_zero,
+    contract_type_ecrecover,        //1
+    contract_type_sha256,           //2
+    contract_type_ripemd160,        //3
+    contract_type_identity,         //4
+    contract_type_modexp,           //5
+    contract_type_alt_bn128_G1_add, //6
+    contract_type_alt_bn128_G1_mul, //7
+    contract_type_alt_bn128_pairing_product //8
+};
+
+int get_precompile_address_type(const evmc_address addr);
+int64_t get_precompiled_contract_gas(contract_type type, size_t input_size);

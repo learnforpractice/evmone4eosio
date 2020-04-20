@@ -2,6 +2,7 @@
 #include <secp256k1_ecdh.h>
 #include <secp256k1_recovery.h>
 #include <secp256k1_sha256.h>
+#include <ethash/keccak.hpp>
 
 #include "utility.hpp"
 
@@ -219,6 +220,49 @@ const char *get_status_error(evmc_status_code& status_code) {
     }
 }
 
+
+/*
+"0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } }, "balance": "0x01" },
+"0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } }, "balance": "0x01" },
+"0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } }, "balance": "0x01" },
+"0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } }, "balance": "0x01" },
+*/
+
+contract_gas contracts_gas[] = {
+    {0, 0},
+    {3000,0},  //ecrecover
+    {60,12},   //sha256
+    {600,120}, //ripemd160
+    {15,3}     //identity
+};
+
+int64_t get_precompiled_contract_gas(contract_type type, size_t input_size) {
+//size_t input_size, int64_t base_gas, int64_t word_gas
+    EOSIO_ASSERT(type <= contract_type_identity, "bad contract type");
+    int64_t base_gas = contracts_gas[(int)type].base;
+    int64_t word_gas = contracts_gas[(int)type].word;
+    return base_gas + (input_size + 31) / 32 * word_gas;
+}
+
+int get_precompile_address_type(const evmc_address addr) {
+    static uint8_t prefix[19] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+    int index = addr.bytes[19];
+    if (index >= 1 && index <= 8) {
+    } else {
+        return 0;
+    }
+
+    if (*(uint128_t*)addr.bytes != 0) {
+        return 0;
+    }
+    
+    if (addr.bytes[16] == 0 && addr.bytes[17] == 0 && addr.bytes[18] == 0) {
+    } else {
+        return 0;
+    }
+    return index;
+}
+
 extern "C" EVMC_EXPORT int evm_init() {
     s_ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
     return 0;
@@ -270,4 +314,9 @@ extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _
     // Expect single uint8_t header of value 0x04 -- uncompressed public key.
     EOSIO_ASSERT(_serialized_public_key[0] == 0x04, "eth_recover: bad value");
     return 1;
+}
+
+bytes32 evm_keccak256(const uint8_t *input, size_t input_size) {
+    auto hash = ethash::keccak256(input, input_size);
+    return *((bytes32 *)&hash);
 }

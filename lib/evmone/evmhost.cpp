@@ -1,7 +1,9 @@
 #include "evmhost.hpp"
-#include <ethash/keccak.hpp>
-
 #include <eosiolib_legacy/eosiolib.h>
+#include "utility.hpp"
+#include <map>
+using namespace std;
+#define MAX_CALL_DEPTH (13)
 
 EVMHost::EVMHost(const evmc_tx_context& ctx, evmc_revision _version) noexcept {
     tx_context = ctx;
@@ -81,15 +83,11 @@ bytes32 EVMHost::get_code_hash(const address& addr) const {
     vector<uint8_t> code;
     eth_account_get_code(ETH_ADDRESS(addr), code);
 
-    ethash::hash256 hash;
+    bytes32 hash;
     memset(hash.bytes, 0, 32);
 
-    if (code.size() == 0) {
-        hash = ethash::keccak256((uint8_t*)"", 0);
-    } else {
-        hash = ethash::keccak256((const uint8_t*)code.data(), code.size());
-    }
-    return *((bytes32*)&hash);
+    hash = evm_keccak256((const uint8_t*)code.data(), code.size());
+    return hash;
 }
 
 size_t EVMHost::copy_code(const address& addr,
@@ -123,7 +121,7 @@ void EVMHost::selfdestruct(const address& addr, const address& beneficiary) {
     }
 
     eth_uint256 zero{};
-    eth_account_set_balance(ETH_ADDRESS(addr), zero, creator);
+    eth_account_set_balance(ETH_ADDRESS(addr), zero, 0);
     eth_account_set_balance(ETH_ADDRESS(beneficiary), _balance_beneficiary, 0);
     eth_account_clear_code(ETH_ADDRESS(addr));
 }
@@ -176,60 +174,54 @@ void EVMHost::emit_log(const address& addr,
     logs.emplace_back(log);
 }
 
-/*
-"0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } }, "balance": "0x01" },
-"0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } }, "balance": "0x01" },
-"0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } }, "balance": "0x01" },
-"0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } }, "balance": "0x01" },
-*/
-struct contract_gas {
-    int base;
-    int word;
-};
+static map<uint256, vector<uint8_t>> code_cache;
 
-contract_gas contracts_gas[] = {
-    {3000,0},
-    {60,12},
-    {600,120},
-    {15,3}
-};
-
-enum contract_type {
-    type_ecrecover,
-    type_sha256,
-    type_ripemd160,
-    type_identity
-};
-
-int64_t get_precompiled_contract_gas(contract_type type, size_t input_size) {
-//size_t input_size, int64_t base_gas, int64_t word_gas
-    EOSIO_ASSERT(type <= type_identity, "bad contract type");
-    int64_t base_gas = contracts_gas[(int)type].base;
-    int64_t word_gas = contracts_gas[(int)type].word;
-    return base_gas + (input_size + 31) / 32 * word_gas;
+vector<uint8_t>& get_code(const evmc_address& addr) {
+    uint256 _addr{};
+    memcpy(&_addr, addr.bytes, 20);
+    auto it = code_cache.find(_addr);
+    if (it == code_cache.end()) {
+        vector<uint8_t> code{};
+        eth_account_get_code(*(eth_address*)addr.bytes, code);
+        code_cache.emplace(_addr, std::move(code));
+        return code_cache[_addr];
+    } else {
+        return it->second;
+    }
 }
 
-result on_call(evmc_revision version, evmc_address& origin, const evmc_message& msg, vector<evm_log>& logs) {
-    static evmc_address ecrecover_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
-    static evmc_address sha256_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02};
-    static evmc_address ripemd160_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03};
-    static evmc_address identity_address{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04};
-//DELEGATECALL
+result on_call(evmc_revision version, evmc_address& origin, const evmc_message& _msg, vector<evm_log>& logs) {
     evmc_result res{};
-    if (msg.kind == EVMC_DELEGATECALL) {
-//
+    evmc_address code_addr{};
+    evmc_message msg = _msg;
+    if (msg.depth > MAX_CALL_DEPTH) {
+        auto ret = evmc_make_result(EVMC_CALL_DEPTH_EXCEEDED, msg.gas, nullptr, 0);
+        return result(ret);
+    }
+
+    if (msg.kind == EVMC_DELEGATECALL || msg.kind == EVMC_CALLCODE) {
     } else {
         evmc_transfer(msg.sender, msg.destination, msg.value);
     }
+    int index = get_precompile_address_type(msg.destination);
 
-    uint64_t nonce = 0;
-    eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
-//    EOSIO_ASSERT(nonce >= 0, "on_call: bad nonce");
-    eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
+    code_addr = msg.destination;
+    if (msg.kind == EVMC_CALLCODE) {
+        msg.destination = msg.sender;
+    }
 
-    if (msg.destination == ecrecover_address) {
-        EOSIO_ASSERT(msg.input_size == 128, "ecrecover: bad input size!");
-        intx::uint256 v = from_big_endian(msg.input_data+32, 32);
+    if (index == contract_type_ecrecover) {
+        uint8_t input_data[128];
+        memset(input_data, 0, sizeof(input_data));
+        memcpy(input_data, msg.input_data, std::min<size_t>(128, msg.input_size));
+//        EOSIO_ASSERT(msg.input_size == 128, "ecrecover: bad input size!");
+        auto gas_cost = get_precompiled_contract_gas(contract_type_ecrecover, msg.input_size);
+        if (gas_cost > msg.gas) {
+            res = evmc_make_result(EVMC_OUT_OF_GAS, msg.gas , nullptr, 0);
+            return result(res);
+        }
+
+        intx::uint256 v = from_big_endian(input_data+32, 32);
         if (v >= 27 && v <= 28) {//use ETH recover_key api
             /*
             hash: 256bit
@@ -240,62 +232,74 @@ result on_call(evmc_revision version, evmc_address& origin, const evmc_message& 
             uint8_t hash[32];
             uint8_t public_key[65];
             uint8_t signature[65];
-            const uint8_t *hash_message = msg.input_data;
+            const uint8_t *hash_message = input_data;
             memset(public_key, 0, 65);
-            memcpy(signature, msg.input_data+64, 64);
+            memcpy(signature, input_data+64, 64);
             signature[64] = uint8_t(v-27);
+
             evm_recover_key(signature, 65, hash_message, 32, public_key, 65);
-            auto hash256 = ethash::keccak256(public_key+1, 64);
+
+            auto hash256 = evm_keccak256(public_key+1, 64);
 
             memset(hash, 0, 32);
             memcpy(hash+12, (char*)&hash256 + 12, 20);
-            
-            auto gas_cost = get_precompiled_contract_gas(type_ecrecover, msg.input_size);
+
             res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, (uint8_t *)&hash, 32);
         } else {//use EOS recover_key api
             uint8_t hash[32];
             uint8_t sign[66];
-            const uint8_t *hashed_message = msg.input_data;
+            const uint8_t *hashed_message = input_data;
 
             sign[0] = 0x00; //K1
             sign[1] = uint8_t(v);
-            memcpy(sign+2, msg.input_data+64, 64);
+            memcpy(sign+2, input_data+64, 64);
             uint8_t pub_key[34];
             int pub_key_size = ::recover_key((checksum256*)hashed_message, (const char *)sign, 66, (char *)pub_key, 34);
             EOSIO_ASSERT(pub_key_size==34, "bad pub key size");
 //            printhex(pub_key, 34);prints("\n");
-            auto hash256 = ethash::keccak256(pub_key+1, 33);
+            auto hash256 = evm_keccak256(pub_key+1, 33);
 
             memset(hash, 0, 32);
             memcpy(hash+12, (char*)&hash256 + 12, 20);
-            auto gas_cost = get_precompiled_contract_gas(type_ecrecover, msg.input_size);
             res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, (uint8_t *)&hash, 32);
         }
         // bytes32 *r = (bytes32*)msg.input_data + 2;
         // bytes32 *s = (bytes32*)msg.input_data + 3;
         return result(res);
-    } else if (msg.destination == sha256_address) {
+    } else if (index == contract_type_sha256) {
+        auto gas_cost = get_precompiled_contract_gas(contract_type_sha256, msg.input_size);
+        if (gas_cost > msg.gas) {
+            res = evmc_make_result(EVMC_OUT_OF_GAS, msg.gas , nullptr, 0);
+            return result(res);
+        }
+
         struct checksum256 hash{};
         sha256((char *)msg.input_data, (uint32_t)msg.input_size, &hash);
         //vmelog("++++++++++call sha256, input: %s\n", msg.input_data);
-        auto gas_cost = get_precompiled_contract_gas(type_sha256, msg.input_size);
         res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, (uint8_t *)&hash, 32);
         return result(res);
-    } else if (msg.destination == ripemd160_address) {
+    } else if (index == contract_type_ripemd160) {
+        auto gas_cost = get_precompiled_contract_gas(contract_type_ripemd160, msg.input_size);
+        if (gas_cost > msg.gas) {
+            res = evmc_make_result(EVMC_OUT_OF_GAS, msg.gas , nullptr, 0);
+            return result(res);
+        }
+
         uint8_t hash[32];
         memset(hash, 0, 32);
         ripemd160((char *)msg.input_data, (uint32_t)msg.input_size, (struct checksum160*)&hash[12]);
-
-        auto gas_cost = get_precompiled_contract_gas(type_ripemd160, msg.input_size);
         res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, hash, 32);
         return result(res);
-    } else if (msg.destination == identity_address) {
-        auto gas_cost = get_precompiled_contract_gas(type_identity, msg.input_size);
+    } else if (index == contract_type_identity) {
+        auto gas_cost = get_precompiled_contract_gas(contract_type_identity, msg.input_size);
+        if (gas_cost > msg.gas) {
+            res = evmc_make_result(EVMC_OUT_OF_GAS, msg.gas , nullptr, 0);
+            return result(res);
+        }
         res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, msg.input_data, msg.input_size);
         return result(res);
-    } else {
-        vector<uint8_t> code;
-        eth_account_get_code(*(eth_address*)&msg.destination, code);
+    }  else {
+        vector<uint8_t>& code = get_code(code_addr);
         if (code.size()) {
             auto host = EVMHost(origin, version);
             auto evm = evmc::VM{evmc_create_evmone()};
@@ -304,13 +308,17 @@ result on_call(evmc_revision version, evmc_address& origin, const evmc_message& 
             //vmelog("++++++++gas left %d\n", ret.gas_left);
             return ret;
         } else {
-            res = evmc_make_result(EVMC_SUCCESS, 0, nullptr, 0);
+            res = evmc_make_result(EVMC_SUCCESS, msg.gas, nullptr, 0);
             return result(res);
         }
     }
 }
 
 result on_create(evmc_revision version, evmc_address& origin, const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address) {
+    if (msg.depth > MAX_CALL_DEPTH) {
+        auto ret = evmc_make_result(EVMC_CALL_DEPTH_EXCEEDED, msg.gas, nullptr, 0);
+        return result(ret);
+    }
     uint64_t nonce = 0;
     eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
 //    EOSIO_ASSERT(nonce >= 0, "on_create:bad nonce!");
@@ -319,7 +327,7 @@ result on_create(evmc_revision version, evmc_address& origin, const evmc_message
     addr.resize(20);
     memcpy(addr.data(), msg.sender.bytes, 20);
     auto encoded = rlp::encode(addr, nonce);
-    auto hash = ethash::keccak256(encoded.data(), encoded.size());
+    auto hash = evm_keccak256(encoded.data(), encoded.size());
     memcpy(new_address.bytes, (char*)&hash+12, 20);
 
     nonce += 1;
