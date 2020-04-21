@@ -131,6 +131,7 @@ result EVMHost::call(const evmc_message& msg) {
     if (msg.kind == EVMC_CREATE) {
         evmc_address new_address;
         result res = on_create(version, tx_context.tx_origin, msg, msg.input_data, (uint32_t)msg.input_size, _logs, new_address);
+        res.create_address = new_address;
         if (res.status_code != EVMC_SUCCESS) {
             if (res.status_code != EVMC_SUCCESS) {
                 #ifdef EVM_FOR_PASS_VMTESTS
