@@ -235,15 +235,7 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const uint8_t
         print_result(msg.destination, res.output_data, res.output_size, logs, res.gas_left);
 
         if (res.status_code != EVMC_SUCCESS) {
-            #ifdef EVM_FOR_PASS_VMTESTS
-            //only throw on revert for pass most of vm tests
-            if (res.status_code == EVMC_REVERT) {
-                EOSIO_THROW(get_status_error(res.status_code));
-            }
-            #else
-                //revert on other than EVMC_SUCCESS
-                EOSIO_THROW(get_status_error(res.status_code));
-            #endif
+            EOSIO_THROW(get_status_error(res.status_code));
         }
 
     } else {
