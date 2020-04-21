@@ -60,7 +60,7 @@ bool    eth_account_bind_address_to_creator(eth_address& address, uint64_t creat
 bool    eth_account_find_address_by_binded_creator(uint64_t creator, eth_address& address);
 
 
-bool    eth_account_create(eth_address& address, uint64_t creator);
+bool    eth_account_create(eth_address& address, uint64_t creator, uint64_t nonce=1);
 bool    eth_account_exists(eth_address& address);
 void    eth_account_check_address(eth_address& address);
 uint64_t eth_account_find_creator_by_address(eth_address& address);
@@ -81,11 +81,11 @@ bool    eth_account_get_value(eth_address& address, key256& key, value256& value
 bool    eth_account_set_value(eth_address& address, key256& key, value256& value);
 bool    eth_account_clear_value(eth_address& address, key256& key);
 
+eth_address& evm_get_origin_address();
+void evm_set_origin_address(eth_address& addr);
+
 void eth_account_clear_all();
 
 string n2s(uint64_t value);
 
 #define EVM_API __attribute__ ((visibility ("default")))
-
-eth_address& evm_get_origin_address();
-void evm_set_origin_address(eth_address& addr);

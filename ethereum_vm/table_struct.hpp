@@ -64,7 +64,7 @@ struct [[eosio::table]] ethaccount {
     uint64_t                        creator;
     int64_t                         nonce;
     eth_address                     address;
-#ifdef ETH_BALANCE_256BIT
+#ifdef EVM_FOR_PASS_VMTESTS
     std::array<uint8_t, 32>         balance;
 #else
     asset                           balance;
@@ -81,7 +81,7 @@ struct [[eosio::table]] ethaccount {
     uint64_t by_creator() const {
         return creator;
     }
-#ifdef ETH_BALANCE_256BIT
+#ifdef EVM_FOR_PASS_VMTESTS
     EOSLIB_SERIALIZE( ethaccount, (index)(creator)(nonce)(address)(balance) )
 #else
     EOSLIB_SERIALIZE( ethaccount, (index)(creator)(nonce)(address)(balance)(pads) )

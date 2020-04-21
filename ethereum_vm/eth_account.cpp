@@ -8,6 +8,25 @@
 
 #include "table_struct.hpp"
 
+#ifdef USE_KEY256_VALUE_TABLE
+#define VM_API_IMPORT __attribute__((eosio_wasm_import))
+
+extern "C"
+{
+    VM_API_IMPORT uint32_t db_get_table_count(uint64_t a, uint64_t b, uint64_t c);
+    VM_API_IMPORT int32_t db_store_i256( uint64_t scope, uint64_t table, uint64_t payer, void* id, int size, const char* buffer, size_t buffer_size );
+    VM_API_IMPORT void db_update_i256( int iterator, uint64_t payer, const char* buffer, size_t buffer_size );
+    VM_API_IMPORT void db_remove_i256( int iterator );
+    VM_API_IMPORT int32_t db_get_i256( int iterator, char* buffer, size_t buffer_size );
+    VM_API_IMPORT int32_t db_find_i256( uint64_t code, uint64_t scope, uint64_t table, void* id, size_t size );
+    VM_API_IMPORT int db_previous_i256( int itr, void* primary, size_t id_size );
+    VM_API_IMPORT int db_next_i256( int itr, void* primary, size_t id_size );
+    VM_API_IMPORT int db_lowerbound_i256( uint64_t code, uint64_t scope, uint64_t table, void* id, size_t id_size );
+    VM_API_IMPORT int db_upperbound_i256( uint64_t code, uint64_t scope, uint64_t table, void* id, size_t id_size );
+}
+
+#endif
+
 uint64_t get_next_key256_index(uint64_t payer) {
     uint64_t code = current_receiver().value;
     uint64_t scope = code;
@@ -138,7 +157,7 @@ bool eth_account_find_creator_and_index_by_address(eth_address& address, uint64_
     return true;
 }
 
-bool eth_account_create(eth_address& address, uint64_t creator) {
+bool eth_account_create(eth_address& address, uint64_t creator, uint64_t nonce) {
     uint64_t code = current_receiver().value;
     uint64_t scope = code;
     uint64_t payer = creator;
@@ -164,7 +183,7 @@ bool eth_account_create(eth_address& address, uint64_t creator) {
             row.address = address;
             row.index = index;
             row.creator = creator;
-            row.nonce = 1;
+            row.nonce = nonce;
         });
         return true;
     } else {
@@ -227,7 +246,7 @@ uint64_t eth_account_get_info(eth_address& address, uint64_t* creator, int64_t* 
         *nonce = idx->nonce;
     }
     if (amount) {
-#ifdef ETH_BALANCE_256BIT
+#ifdef EVM_FOR_PASS_VMTESTS
         memcpy(amount->bytes, idx->balance.data(), 32);
 #else
         *((int64_t*)&amount) = idx->balance.amount;
@@ -299,7 +318,7 @@ eth_uint256 eth_account_get_balance(eth_address& address) {
     auto itr = idx_sec.find(_address);
 //    check(itr != idx_sec.end(), "get_balance:address does not created!");
     if (itr != idx_sec.end()) {
-#ifdef ETH_BALANCE_256BIT
+#ifdef EVM_FOR_PASS_VMTESTS
         balance = *(eth_uint256*)&itr->balance;
 #else
         *((int64_t*)&balance) = itr->balance.amount;
@@ -319,10 +338,18 @@ bool eth_account_set_balance(eth_address& address, eth_uint256& amount, uint64_t
     auto idx_sec = mytable.get_index<"byaddress"_n>();
 
     auto itr = idx_sec.find(_address);
+
+#ifdef EVM_FOR_PASS_VMTESTS
+    if (itr == idx_sec.end()) {
+        eth_account_create(address, code, 0);
+        itr = idx_sec.find(_address);
+    }
+#else
     check(itr != idx_sec.end(), "set_balance:address does not created");
+#endif
     auto itr2 = mytable.find(itr->index);
-    mytable.modify( itr2, name(payer), [&]( auto& row ) {
-#ifdef ETH_BALANCE_256BIT
+    mytable.modify( itr2, name(0), [&]( auto& row ) {
+#ifdef EVM_FOR_PASS_VMTESTS
         memcpy(row.balance.data(), amount.bytes, 32);
 #else
         row.balance.amount = ((int64_t*)&amount)[0];
@@ -447,6 +474,7 @@ bool eth_account_set_nonce(eth_address& address, uint64_t nonce) {
     return eth_account_set(address, account);
 }
 
+#ifndef USE_KEY256_VALUE_TABLE
 bool eth_account_get_value(eth_address& address, key256& key, value256& value) {
     uint64_t creator, address_index;
     bool ret = eth_account_find_creator_and_index_by_address(address, creator, address_index);
@@ -479,15 +507,18 @@ bool eth_account_get_value(eth_address& address, key256& key, value256& value) {
 
 bool eth_account_set_value(eth_address& address, key256& key, value256& value) {
     uint64_t creator, address_index;
+    uint64_t sender_creator;
     bool ret = eth_account_find_creator_and_index_by_address(address, creator, address_index);
     check(ret, "set_value:address not created!");
 //    eosio::check(creator, "set_value: address creator not found!");
-    
+
+#ifdef EVM_FOR_PASS_VMTESTS
+    sender_creator = current_receiver().value;
+#else
     auto sender = evm_get_origin_address();
-    uint64_t sender_creator = eth_account_find_creator_by_address(sender);
-
+    sender_creator = eth_account_find_creator_by_address(sender);
     require_auth(name(sender_creator));
-
+#endif
     uint64_t code = current_receiver().value;
 
     account_state_table mytable(name(code), address_index);
@@ -498,7 +529,7 @@ bool eth_account_set_value(eth_address& address, key256& key, value256& value) {
 
     auto itr = idx_sec.find(_key);
     if (itr == idx_sec.end()) {
-        mytable.emplace( name(creator), [&]( auto& row ) {
+        mytable.emplace( name(sender_creator), [&]( auto& row ) {
             uint64_t key256_index = get_next_key256_index(creator);
             row.index = key256_index;
             row.key.resize(32);
@@ -512,7 +543,7 @@ bool eth_account_set_value(eth_address& address, key256& key, value256& value) {
         if (value == zero) {//release storage if value is zero
             mytable.erase(itr2);
         } else {
-            mytable.modify( itr2, name(creator), [&]( auto& row ) {
+            mytable.modify( itr2, name(0), [&]( auto& row ) {
                 check(row.value.size() == 32, "bad value size!");
                 memcpy(row.value.data(), value.data(), SIZE_256BIT);
             });
@@ -543,6 +574,66 @@ bool eth_account_clear_value(eth_address& address, key256& key) {
     mytable.erase(itr2);
     return true;
 }
+
+#else
+
+bool eth_account_set_value(eth_address& address, key256& key, value256& value) {
+    uint64_t creator, address_index;
+    bool ret = eth_account_find_creator_and_index_by_address(address, creator, address_index);
+    check(ret, "set_value:address not created!");
+
+    auto sender = evm_get_origin_address();
+    uint64_t sender_creator = eth_account_find_creator_by_address(sender);
+
+    require_auth(name(sender_creator));
+
+    uint64_t code = current_receiver().value;
+    uint64_t scope = code;
+    uint64_t payer = sender_creator;
+
+    int itr = db_find_i256(code, scope, address_index, key.data(), 32);
+    if (itr < 0) {
+        db_store_i256(scope, address_index, payer, (char*)key.data(), 32, (char*)value.data(), 32);
+    } else {
+        db_update_i256(itr, payer, (char*)value.data(), 32);
+    }
+    return true;
+}
+
+bool eth_account_get_value(eth_address& address, key256& key, value256& value) {
+    uint64_t creator, address_index;
+    bool ret = eth_account_find_creator_and_index_by_address(address, creator, address_index);
+    check(ret, "set_value:address not created!");
+
+    uint64_t code = current_receiver().value;
+    uint64_t scope = code;
+    int itr = db_find_i256(code, scope, address_index, key.data(), 32);
+    if (itr < 0) {
+        return false;
+    }
+
+    int size = db_get_i256(itr, (char*)value.data(), 32);
+    check(size == 32, "bad storage!");
+    return true;
+}
+
+bool eth_account_clear_value(eth_address& address, key256& key) {
+    uint64_t creator, address_index;
+    bool ret = eth_account_find_creator_and_index_by_address(address, creator, address_index);
+    check(ret, "set_value:address not created!");
+
+    uint64_t code = current_receiver().value;
+    uint64_t scope = code;
+
+    int itr = db_find_i256(code, scope, address_index, key.data(), 32);
+    if (itr < 0) {
+        return false;
+    } else {
+        db_remove_i256(itr);
+        return true;
+    }
+}
+#endif
 
 void eth_account_clear_all() {
     uint64_t code = current_receiver().value;
@@ -590,6 +681,7 @@ void eth_account_clear_all() {
 string n2s(uint64_t value) {
     return name(value).to_string();
 }
+
 
 static eth_address g_sender{};
 

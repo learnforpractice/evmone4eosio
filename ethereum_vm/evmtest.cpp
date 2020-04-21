@@ -43,14 +43,51 @@ extern "C" {
 #endif
     int evm_execute(const char *raw_trx, uint32_t raw_trx_size, const char *sender_address, uint32_t sender_address_size);
 
+
+    #define CONTEXT_SIZE (64*1024)
+    #define WASM_IMPORT __attribute__((eosio_wasm_import))
+
+    WASM_IMPORT int32_t db_store_i64(uint64_t scope, uint64_t table, uint64_t payer, uint64_t id,  const void* data, uint32_t len);
+    WASM_IMPORT void db_update_i64(int32_t iterator, uint64_t payer, const void* data, uint32_t len);
+    WASM_IMPORT int32_t db_get_i64(int32_t iterator, const void* data, uint32_t len);
+    WASM_IMPORT int32_t db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id);
+
+    // WASM_IMPORT uint32_t read_action_data( void* msg, uint32_t len );
+    // WASM_IMPORT uint32_t action_data_size(void);
+
+    static char *secp256k1_ecmult_static_context = nullptr;
+
+    void init_secp256k1_ecmult_static_context(uint64_t payer) {
+        uint32_t size = action_data_size();
+        check(size==CONTEXT_SIZE, "bad secp256k1_ecmult_static_context size");
+        secp256k1_ecmult_static_context = (char *)malloc(size);
+        read_action_data(secp256k1_ecmult_static_context, size);
+        auto itr = db_find_i64(current_receiver().value, "ecmult"_n.value, "static"_n.value, "context"_n.value);
+        if (itr < 0) {
+            db_store_i64("ecmult"_n.value, "static"_n.value, payer, "context"_n.value, secp256k1_ecmult_static_context, size);
+        } else {
+            db_update_i64(itr, payer, secp256k1_ecmult_static_context, size);
+        }
+    }
+
     void load_secp256k1_ecmult_static_context() {
-        eosio::check(false, "not implemented!");
+        if (secp256k1_ecmult_static_context) {
+            return;
+        }
+        auto itr = db_find_i64(current_receiver().value, "ecmult"_n.value, "static"_n.value, "context"_n.value);
+        check(itr >= 0, "secp256k1_ecmult_static_context not found in db");
+        secp256k1_ecmult_static_context = (char *)malloc(CONTEXT_SIZE);
+        int size = ::db_get_i64(itr, secp256k1_ecmult_static_context, CONTEXT_SIZE);
+        check(size == CONTEXT_SIZE, "bad secp256k1_ecmult_static_context data");
     }
 
     void* get_secp256k1_ecmult_static_context() {
-        eosio::check(false, "not implemented!");
-        return nullptr;
+        load_secp256k1_ecmult_static_context();
+        check(secp256k1_ecmult_static_context != nullptr, "secp256k1_ecmult_static_context not initialized!");
+        return secp256k1_ecmult_static_context;
     }
+
+
 
     void apply(uint64_t receiver, uint64_t code, uint64_t action) {
         if (action == "clearenv"_n.value) {
