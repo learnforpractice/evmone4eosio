@@ -33,7 +33,7 @@ std::string to_hex(const uint8_t* data, uint32_t size);
 const char *get_status_error(evmc_status_code& status_code);
 void print_result(evmc_address& address, const uint8_t* output_data, size_t output_size, vector<evm_log>& logs);
 result on_create(evmc_revision version, evmc_address& origin, const evmc_message& msg, const uint8_t* code, uint32_t code_size, vector<evm_log> &logs, evmc_address& new_address);
-result on_call(evmc_revision version, evmc_address& origin, const evmc_message& msg, vector<evm_log>& logs);
+result on_call(evmc_revision version, const evmc_address& origin, const evmc_address& code_addr, const evmc_message& msg, vector<evm_log>& logs);
 void evmc_transfer(const evmc_address& sender, const evmc_address& receiver, const evmc_uint256be& value);
 extern "C" EVMC_EXPORT int evm_recover_key(const uint8_t* _signature, uint32_t _signature_size, const uint8_t* _message, uint32_t _message_len, uint8_t* _serialized_public_key, uint32_t _serialized_public_key_size);
 

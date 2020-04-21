@@ -5,12 +5,12 @@
 using namespace std;
 #define MAX_CALL_DEPTH (13)
 
-EVMHost::EVMHost(const evmc_tx_context& ctx, evmc_revision _version) noexcept {
+EVMHost::EVMHost(const evmc_tx_context& ctx, const evmc_message& msg, evmc_revision _version) noexcept : current_msg(msg) {
     tx_context = ctx;
     version = _version;
 }
 
-EVMHost::EVMHost(const evmc_address& _origin, evmc_revision _version) noexcept {
+EVMHost::EVMHost(const evmc_address& _origin, const evmc_message& msg, evmc_revision _version) noexcept : current_msg(msg) {
     tx_context.block_difficulty = {};
     tx_context.block_coinbase = {};
     tx_context.tx_origin = _origin;
@@ -19,7 +19,7 @@ EVMHost::EVMHost(const evmc_address& _origin, evmc_revision _version) noexcept {
     tx_context.block_gas_limit = max_gas_limit;
     int32_t id = eth_get_chain_id();
     tx_context.chain_id = to_uint256(id);
-    tx_context.tx_gas_price = {};
+    tx_context.tx_gas_price = to_uint256(1);
     version = _version;
 }
 
@@ -147,7 +147,14 @@ result EVMHost::call(const evmc_message& msg) {
         append_logs(_logs);
         return res;
     } else if (msg.kind == EVMC_CALL || msg.kind == EVMC_DELEGATECALL || msg.kind == EVMC_CALLCODE) {
-        auto res = on_call(version, tx_context.tx_origin, msg, _logs);
+        evmc_message _msg = msg;
+        evmc_address code_addr = msg.destination;
+        if (_msg.kind == EVMC_CALLCODE) {
+            _msg.destination = msg.sender;
+        } else if (msg.kind == EVMC_DELEGATECALL) {
+            _msg.destination = current_msg.destination;
+        }
+        auto res = on_call(version, tx_context.tx_origin, code_addr, _msg, _logs);
         if (res.status_code != EVMC_SUCCESS) {
             if (res.status_code != EVMC_SUCCESS) {
                 #ifdef EVM_FOR_PASS_VMTESTS
@@ -203,16 +210,15 @@ vector<uint8_t>& get_code(const evmc_address& addr) {
     if (it == code_cache.end()) {
         vector<uint8_t> code{};
         eth_account_get_code(*(eth_address*)addr.bytes, code);
-        code_cache.emplace(_addr, std::move(code));
+        code_cache.emplace(_addr, code);
         return code_cache[_addr];
     } else {
         return it->second;
     }
 }
 
-result on_call(evmc_revision version, evmc_address& origin, const evmc_message& _msg, vector<evm_log>& logs) {
+result on_call(evmc_revision version, const evmc_address& origin, const evmc_address& code_addr, const evmc_message& _msg, vector<evm_log>& logs) {
     evmc_result res{};
-    evmc_address code_addr{};
     evmc_message msg = _msg;
     if (msg.depth > MAX_CALL_DEPTH) {
         auto ret = evmc_make_result(EVMC_CALL_DEPTH_EXCEEDED, msg.gas, nullptr, 0);
@@ -224,11 +230,6 @@ result on_call(evmc_revision version, evmc_address& origin, const evmc_message& 
         evmc_transfer(msg.sender, msg.destination, msg.value);
     }
     int index = get_precompile_address_type(msg.destination);
-
-    code_addr = msg.destination;
-    if (msg.kind == EVMC_CALLCODE) {
-        msg.destination = msg.sender;
-    }
 
     if (index == contract_type_ecrecover) {
         uint8_t input_data[128];
@@ -318,10 +319,18 @@ result on_call(evmc_revision version, evmc_address& origin, const evmc_message& 
         }
         res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, msg.input_data, msg.input_size);
         return result(res);
-    }  else {
+    } else if (index == contract_type_modexp) {
+        EOSIO_THROW("Not implemented!");
+    } else if (index == contract_type_alt_bn128_G1_add) {
+        EOSIO_THROW("Not implemented!");
+    } else if (index == contract_type_alt_bn128_G1_mul) {
+        EOSIO_THROW("Not implemented!");
+    } else if (index == contract_type_alt_bn128_pairing_product) {
+        EOSIO_THROW("Not implemented!");
+    } else {
         vector<uint8_t>& code = get_code(code_addr);
         if (code.size()) {
-            auto host = EVMHost(origin, version);
+            auto host = EVMHost(origin, msg, version);
             auto evm = evmc::VM{evmc_create_evmone()};
             auto ret = evm.execute(host, version, msg, code.data(), code.size());
             logs = host.get_logs();
@@ -361,7 +370,7 @@ result on_create(evmc_revision version, evmc_address& origin, const evmc_message
  
     evmc_transfer(msg_creation.sender, msg_creation.destination, msg.value);
 
-    auto host = EVMHost(origin, version);
+    auto host = EVMHost(origin, msg, version);
     auto evm = evmc::VM{evmc_create_evmone()};
     auto res = evm.execute(host, version, msg_creation, code, code_size);
     if (res.status_code != EVMC_SUCCESS) {

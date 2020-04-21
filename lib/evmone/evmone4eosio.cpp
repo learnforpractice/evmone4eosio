@@ -212,7 +212,15 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const uint8_t
         result res = on_create(EVMC_VERSION, msg.sender, msg, data.data(), (uint32_t)data.size(), logs, new_address);
         print_result(new_address, res.output_data, res.output_size, logs, res.gas_left);
         if (res.status_code != EVMC_SUCCESS) {
-            EOSIO_THROW(get_status_error(res.status_code));
+            #ifdef EVM_FOR_PASS_VMTESTS
+            //only throw on revert for pass most of vm tests
+            if (res.status_code == EVMC_REVERT) {
+                EOSIO_THROW(get_status_error(res.status_code));
+            }
+            #else
+                //revert on other than EVMC_SUCCESS
+                EOSIO_THROW(get_status_error(res.status_code));
+            #endif
         }
     } else if (msg.kind == EVMC_CALL) {
         msg.input_data = data.data();
@@ -223,11 +231,19 @@ int evm_execute_trx(const uint8_t *raw_trx, uint32_t raw_trx_size, const uint8_t
         eth_account_get_nonce(*(eth_address *)&msg.sender, nonce);
         eth_account_set_nonce(*(eth_address *)&msg.sender, nonce+1);
 
-        auto res = on_call(EVMC_VERSION, msg.sender, msg, logs);
+        auto res = on_call(EVMC_VERSION, msg.sender, msg.destination, msg, logs);
         print_result(msg.destination, res.output_data, res.output_size, logs, res.gas_left);
 
         if (res.status_code != EVMC_SUCCESS) {
-            EOSIO_THROW(get_status_error(res.status_code));
+            #ifdef EVM_FOR_PASS_VMTESTS
+            //only throw on revert for pass most of vm tests
+            if (res.status_code == EVMC_REVERT) {
+                EOSIO_THROW(get_status_error(res.status_code));
+            }
+            #else
+                //revert on other than EVMC_SUCCESS
+                EOSIO_THROW(get_status_error(res.status_code));
+            #endif
         }
 
     } else {

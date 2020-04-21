@@ -1,3 +1,4 @@
+#pragma once
 #include <evmc/evmc.hpp>
 #include <eth_account.hpp>
 #include "utility.hpp"
@@ -9,13 +10,14 @@ constexpr auto max_gas_limit = std::numeric_limits<int64_t>::max();
 
 class EVMHost : public evmc::Host {
     evmc_tx_context tx_context{};
+    evmc_message current_msg;
     evmc_revision version = EVMC_BYZANTIUM;
 
 protected:
     vector<evm_log> logs;
 public:
-    explicit EVMHost(const evmc_tx_context& ctx, evmc_revision _version) noexcept;
-    explicit EVMHost(const evmc_address& _origin, evmc_revision _version) noexcept;
+    explicit EVMHost(const evmc_tx_context& ctx, const evmc_message& msg, evmc_revision _version) noexcept;
+    explicit EVMHost(const evmc_address& _origin, const evmc_message& msg, evmc_revision _version) noexcept;
     virtual void append_logs(vector<evm_log>& _logs);
     virtual vector<evm_log>& get_logs();
     virtual bool account_exists(const address& addr) const override;

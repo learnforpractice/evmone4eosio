@@ -77,7 +77,7 @@ extern "C" void evm_execute_test(const uint8_t* tests, uint32_t _size) {
         version = EVMC_ISTANBUL;
     }
 
-    auto host = EVMHost(tx_context, version);
+    auto host = EVMHost(tx_context, msg, version);
     auto evm = evmc::VM{evmc_create_evmone()};
 
     auto res = evm.execute(host, version, msg, code.data(), code.size());
