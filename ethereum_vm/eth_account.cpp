@@ -639,6 +639,10 @@ void eth_account_clear_all() {
     uint64_t code = current_receiver().value;
     uint64_t scope = code;
 
+    key256_counter counter(name(code), scope);
+    key256counter a = {0};
+    counter.set(a, name(0));
+
     ethaccount_table mytable(name(code), scope);
 
     while(true) {
