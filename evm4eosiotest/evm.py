@@ -208,7 +208,13 @@ def publish_evm_code(transaction, eos_pub_key = None):
         contract_name = 'helloworld11'
     
     args = {'trx': encoded_transaction, 'sender': sender}
-    ret = eosapi.push_action(contract_name, 'raw', args, {account_name:'active'})
+
+    creator = eth.get_creator(sender)
+    if not creator:
+        raise Exception(f"eth address {sender} has not binded to an EOS account!")
+    logger.info(f'{args} {creator}')
+    ret = eosapi.push_action(contract_name, 'raw', args, {creator:'active'})
+
     g_last_trx_ret = ret
     logs = ret['processed']['action_traces'][0]['console']
     # logger.info(logs)
@@ -395,6 +401,8 @@ class Eth(object):
     def get_address_info(self, address, json=True):
         address = normalize_address(address)
         rows = self.get_all_address_info(json)
+        if not rows:
+            return None
         for row in rows:
             if row['address'] == address:
                 return row
@@ -474,6 +482,8 @@ class Eth(object):
         address = normalize_address(address)
         creator = self.get_creator(address)
         index = self.get_index(address)
+        if not index:
+            raise Excetpion(f'address {address} not created')
         # print('+++++index:', creator, index)
         index = eosapi.n2s(index)
         try:
@@ -486,8 +496,9 @@ class Eth(object):
         address = normalize_address(address)
         creator = self.get_creator(address)
         index = self.get_index(address)
+        if not index:
+            return None
         index = eosapi.n2s(index)
-
         try:
             ret = eosapi.get_table_rows(True, self.contract_account, index, 'accountstate', '', '', '', 100)
             for row in ret['rows']:
@@ -496,6 +507,13 @@ class Eth(object):
             return None
         except Exception as e:
             return None
+
+    def get_int_value(self, address, key):
+        value = self.get_value(address, key)
+        if not value:
+            return 0
+        value = bytes.fromhex(value)
+        return int.from_bytes(value, 'big')
 
     def get_code(self, address):
         address = normalize_address(address)
@@ -589,10 +607,9 @@ class EthAccount(object):
     def get_code(self):
         return self.eth.get_code(self.address)
 
-
 provider = LocalProvider()
 w3 = Web3(provider)
-eth = None
+eth = Eth('helloworld11')
 
 # my_provider = Web3.IPCProvider('/Users/newworld/dev/uuos2/build/aleth/aleth/dd/geth.ipc')
 # w3 = Web3(my_provider)
