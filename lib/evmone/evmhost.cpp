@@ -131,7 +131,6 @@ result EVMHost::call(const evmc_message& msg) {
     if (msg.kind == EVMC_CREATE) {
         evmc_address new_address;
         result res = on_create(version, tx_context.tx_origin, msg, msg.input_data, (uint32_t)msg.input_size, _logs, new_address);
-        res.create_address = new_address;
         if (res.status_code != EVMC_SUCCESS) {
             if (res.status_code != EVMC_SUCCESS) {
                 #ifdef EVM_FOR_PASS_VMTESTS
@@ -211,7 +210,7 @@ vector<uint8_t>& get_code(const evmc_address& addr) {
     if (it == code_cache.end()) {
         vector<uint8_t> code{};
         eth_account_get_code(*(eth_address*)addr.bytes, code);
-        code_cache.emplace(_addr, code);
+        code_cache.emplace(_addr, std::move(code));
         return code_cache[_addr];
     } else {
         return it->second;
@@ -320,14 +319,6 @@ result on_call(evmc_revision version, const evmc_address& origin, const evmc_add
         }
         res = evmc_make_result(EVMC_SUCCESS, msg.gas - gas_cost, msg.input_data, msg.input_size);
         return result(res);
-    } else if (index == contract_type_modexp) {
-        EOSIO_THROW("Not implemented!");
-    } else if (index == contract_type_alt_bn128_G1_add) {
-        EOSIO_THROW("Not implemented!");
-    } else if (index == contract_type_alt_bn128_G1_mul) {
-        EOSIO_THROW("Not implemented!");
-    } else if (index == contract_type_alt_bn128_pairing_product) {
-        EOSIO_THROW("Not implemented!");
     } else {
         vector<uint8_t>& code = get_code(code_addr);
         if (code.size()) {
@@ -388,5 +379,6 @@ result on_create(evmc_revision version, evmc_address& origin, const evmc_message
     vector<uint8_t> _code(res.output_data, res.output_data + res.output_size);
     eth_account_set_code(*(eth_address*)&new_address, _code);
     logs = host.get_logs();
+    res.create_address = new_address;
     return res;
 }
