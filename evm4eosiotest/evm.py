@@ -209,11 +209,14 @@ def publish_evm_code(transaction, eos_pub_key = None):
     
     args = {'trx': encoded_transaction, 'sender': sender}
 
-    creator = eth.get_creator(sender)
-    if not creator:
-        raise Exception(f"eth address {sender} has not binded to an EOS account!")
-    logger.info(f'{args} {creator}')
-    ret = eosapi.push_action(contract_name, 'raw', args, {creator:'active'})
+    if g_current_account:
+        auth_account = g_current_account
+    else:
+        auth_account = eth.get_creator(sender)
+        if not auth_account:
+            raise Exception(f"eth address {sender} has not binded to an EOS account!")
+        logger.info(f'{args} {auth_account}')
+    ret = eosapi.push_action(contract_name, 'raw', args, {auth_account:'active'})
 
     g_last_trx_ret = ret
     logs = ret['processed']['action_traces'][0]['console']
