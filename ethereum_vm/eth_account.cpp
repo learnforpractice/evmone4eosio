@@ -45,7 +45,7 @@ uint64_t get_next_eth_address_index(uint64_t payer) {
     uint64_t scope = code;
 
     account_counter counter(name(code), scope);
-    accountcounter a = {0};
+    accountcounter a = {};
     a = counter.get_or_default(a);
     a.count += 1;
     counter.set(a, name(payer));
@@ -60,7 +60,7 @@ void eth_set_chain_id(int32_t chain_id) {
 
     account_counter counter(name(code), scope);
 
-    accountcounter a = {0};
+    accountcounter a = {};
     a = counter.get_or_default(a);
     a.chain_id = chain_id;
     counter.set(a, name(payer));
@@ -72,7 +72,7 @@ int32_t eth_get_chain_id() {
 
     account_counter counter(name(code), scope);
 
-    accountcounter a = {0, 0};
+    accountcounter a = {};
     a = counter.get_or_default(a);
     return a.chain_id;
 }
