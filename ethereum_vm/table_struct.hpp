@@ -5,7 +5,7 @@
 
 #include <eosio/system.hpp>
 #include <vector>
-
+#include <array>
 using namespace std;
 using namespace eosio;
 
@@ -90,19 +90,16 @@ struct [[eosio::table]] ethaccount {
 
 struct [[eosio::table]] account_state {
     uint64_t                        index;
-    vector<char>                    key;
-    vector<char>                    value;
+    array<uint8_t, 32>               key;
+    array<uint8_t, 32>              value;
 
     account_state() {
-        key.resize(32);
-        value.resize(32);
     }
 
     uint64_t primary_key() const { return index; }
 
     checksum256 by_key() const {
         auto ret = checksum256();
-        check(key.size() == 32, "bad key size!");
         memcpy(ret.data(), key.data(), 32);
         return ret;
     }

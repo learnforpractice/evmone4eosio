@@ -33,7 +33,7 @@ uint64_t get_next_key256_index(uint64_t payer) {
 
     key256_counter counter(name(code), scope);
 
-    key256counter a = {0};
+    key256counter a = {};
     a = counter.get_or_default(a);
     a.count += 1;
     counter.set(a, name(payer));
@@ -532,8 +532,6 @@ bool eth_account_set_value(eth_address& address, key256& key, value256& value) {
         mytable.emplace( name(sender_creator), [&]( auto& row ) {
             uint64_t key256_index = get_next_key256_index(creator);
             row.index = key256_index;
-            row.key.resize(32);
-            row.value.resize(32);
             memcpy(row.key.data(), key.data(), SIZE_256BIT);
             memcpy(row.value.data(), value.data(), SIZE_256BIT);
         });
@@ -544,7 +542,6 @@ bool eth_account_set_value(eth_address& address, key256& key, value256& value) {
             mytable.erase(itr2);
         } else {
             mytable.modify( itr2, name(0), [&]( auto& row ) {
-                check(row.value.size() == 32, "bad value size!");
                 memcpy(row.value.data(), value.data(), SIZE_256BIT);
             });
         }
@@ -555,7 +552,7 @@ bool eth_account_set_value(eth_address& address, key256& key, value256& value) {
 bool eth_account_clear_value(eth_address& address, key256& key) {
     uint64_t creator, address_index;
     bool ret = eth_account_find_creator_and_index_by_address(address, creator, address_index);
-    check(ret, "set_value:address not created!");
+    check(ret, "clear_value:address not created!");
 
 
     uint64_t code = current_receiver().value;
@@ -640,7 +637,7 @@ void eth_account_clear_all() {
     uint64_t scope = code;
 
     key256_counter counter(name(code), scope);
-    key256counter a = {0};
+    key256counter a = {};
     counter.set(a, name(0));
 
     ethaccount_table mytable(name(code), scope);
