@@ -246,21 +246,16 @@ int64_t get_precompiled_contract_gas(contract_type type, size_t input_size) {
 
 int get_precompile_address_type(const evmc_address addr) {
     static uint8_t prefix[19] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-    int index = addr.bytes[19];
-    if (index >= 1 && index <= 8) {
-    } else {
+    if (memcmp(prefix, addr.bytes, 19) != 0) {
         return 0;
     }
 
-    if (*(uint128_t*)addr.bytes != 0) {
-        return 0;
-    }
-    
-    if (addr.bytes[16] == 0 && addr.bytes[17] == 0 && addr.bytes[18] == 0) {
+    int index = addr.bytes[19];
+    if (index >= 1 && index <= 8) {
+        return index;
     } else {
         return 0;
     }
-    return index;
 }
 
 extern "C" EVMC_EXPORT int evm_init() {
