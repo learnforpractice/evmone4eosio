@@ -1,5 +1,15 @@
 # EVM for EOSIO
 
+
+# Features
+
+1. C++ API interface for porting any EVM implementaion to EOSIO platform nice and easy.
+2. Base on evmone, a fast EVM implementation
+3. Native compilation supported(2.5x faster than wasm code running in eos-vm-jit mode)
+4. 37% RAM saving via intrinsic db api (288 bytes per kv storage vs 456 bytes per kv storage)
+5. Ethereum RPC Interface API supported, allow Dapp on Ethereum platform migrate to EOSIO platform with little changes.
+
+
 # Setup Pre Requirements:
 
 ## Install Prebuilt EOSIO Binaries
@@ -38,7 +48,7 @@ make -j$(nproc)
 
 ## Build from a release
 
-Download source code https://github.com/learnforpractice/evmone4eosio-private/releases
+Download source code https://github.com/learnforpractice/evmone4eosio/releases
 extract the source code to a directory such as evmone4eosio
 
 ```
