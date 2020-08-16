@@ -6,7 +6,6 @@ import marshal
 import subprocess
 from pyeoskit import eosapi, wallet, db
 from pyeoskit import config
-from pyeoskit._hello import _eosapi
 
 db.reset()
 config.main_token = 'EOS'
@@ -71,7 +70,7 @@ def set_code(account_name, code):
 
 def set_abi(account, abi):
     db.set_abi(account, abi)
-    abi = _eosapi.pack_abi(abi)
+    abi = eosapi.pack_abi(abi)
     setabi ={'account':account, 'abi':abi.hex()}
     eosapi.push_action('eosio', 'setabi', setabi, {account:'active'})
 
